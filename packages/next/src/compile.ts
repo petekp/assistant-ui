@@ -183,7 +183,7 @@ function findDefaultExportObject(
   if (!object) {
     throw new GenerativeCompileError(
       "the default export must be `defineToolkit({ ... })` (imported from " +
-        '"@assistant-ui/next"); wrapping is required so a backend `execute` ' +
+        '"@assistant-ui/react"); wrapping is required so a backend `execute` ' +
         "can't be authored in a way that reaches the client",
       filename,
     );
