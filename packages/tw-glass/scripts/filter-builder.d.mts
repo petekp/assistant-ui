@@ -1,3 +1,7 @@
+export const GLASS_FROST_FILTER: string;
+
+export const GLASS_BACKDROP_FILTER: string;
+
 export function buildDisplacementMapSvg(opts?: {
   inset?: number;
   cornerRadius?: number;
@@ -5,6 +9,8 @@ export function buildDisplacementMapSvg(opts?: {
   outerBlur?: number;
   shape?: "rect" | "circle";
 }): string;
+
+export function minifySvg(svg: string): string;
 
 export function encodeSvgUrl(svg: string): string;
 

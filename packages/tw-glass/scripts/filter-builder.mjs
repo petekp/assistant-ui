@@ -6,6 +6,34 @@
  * no side effects.
  */
 
+// ─── Backdrop-filter composition ───────────────────────────────────
+
+/**
+ * The "frost" half of the backdrop-filter: plain blur / brightness / saturation,
+ * composed from tw-glass's OWN custom properties (no Tailwind `--tw-backdrop-*`
+ * internals). These are universally-supported filter functions, so this is the
+ * value the cross-browser `glass-frosted` utility applies on its own — and the
+ * tail that `.glass` appends after the SVG displacement.
+ *
+ * Each term reads a continuous modifier, falling back to its @property default.
+ */
+export const GLASS_FROST_FILTER = [
+  "blur(var(--tw-glass-blur))",
+  "brightness(var(--tw-glass-brightness))",
+  "saturate(var(--tw-glass-saturation))",
+].join(" ");
+
+/**
+ * The `backdrop-filter` value applied to `.glass`: the SVG displacement filter
+ * (`--tw-glass-filter`) followed by the frost terms. Exported so the generator
+ * and the docs tuner share a single source of truth.
+ *
+ * The displacement `url()` renders only in Chromium; where it isn't supported
+ * (Safari, Firefox) the entire value — frost included — is dropped, which is why
+ * `glass-frosted` exists as the cross-browser alternative.
+ */
+export const GLASS_BACKDROP_FILTER = `var(--tw-glass-filter) ${GLASS_FROST_FILTER}`;
+
 // ─── Displacement Map ──────────────────────────────────────────────
 
 /**
@@ -58,13 +86,27 @@ export function buildDisplacementMapSvg({
 // ─── Encoding (isomorphic) ─────────────────────────────────────────
 
 /**
+ * Strip newlines and collapse whitespace around angle brackets. Shared by both
+ * encoders so their pre-processing can never drift apart.
+ *
+ * @param {string} svg
+ * @returns {string}
+ */
+export function minifySvg(svg) {
+  return svg.replace(/\n/g, "").replace(/\s*([<>])\s*/g, "$1");
+}
+
+/**
  * URL-encode an SVG string instead of Base64 encoding. Works in both Node and browser.
  * This is significantly smaller over the wire when gzip/brotli compressed.
+ *
+ * Escapes quotes (`"`/`'`) as well as the data-URI-unsafe characters, because
+ * the result is embedded inside a `<feImage href="...">` attribute that is
+ * itself percent-encoded again by {@link toDataUri} (the "double-encoding"
+ * contract — see the note there).
  */
 export function encodeSvgUrl(svg) {
-  // Try to minify SVG slightly by removing newlines and extraneous spaces before encoding
-  const minifiedSvg = svg.replace(/\n/g, "").replace(/\s*([<>])\s*/g, "$1");
-  return minifiedSvg
+  return minifySvg(svg)
     .replace(/%/g, "%25")
     .replace(/"/g, "%22")
     .replace(/'/g, "%27")
@@ -99,8 +141,8 @@ function filterClose() {
 /**
  * Build a standard (single-pass) displacement filter SVG.
  *
- * @param {string} mapBase64 - Base64-encoded displacement map SVG
- * @param {number} scale     - Displacement scale (objectBoundingBox fraction)
+ * @param {string} mapUrlEncoded - URL-encoded displacement map SVG (from {@link encodeSvgUrl})
+ * @param {number} scale         - Displacement scale (objectBoundingBox fraction)
  * @returns {string} Complete filter SVG
  */
 export function buildStandardFilter(mapUrlEncoded, scale) {
@@ -116,10 +158,10 @@ export function buildStandardFilter(mapUrlEncoded, scale) {
 /**
  * Build a chromatic (3-pass RGB split) displacement filter SVG.
  *
- * @param {string} mapUrlEncoded - URL-encoded displacement map SVG
- * @param {number} scale     - Base displacement scale
- * @param {number} rRatio    - Red channel multiplier (default 1.4)
- * @param {number} gRatio    - Green channel multiplier (default 1.2)
+ * @param {string} mapUrlEncoded - URL-encoded displacement map SVG (from {@link encodeSvgUrl})
+ * @param {number} scale         - Base displacement scale
+ * @param {number} rRatio        - Red channel multiplier (default 1.4)
+ * @param {number} gRatio        - Green channel multiplier (default 1.2)
  * @returns {string} Complete filter SVG
  */
 export function buildChromaticFilter(
@@ -157,13 +199,18 @@ export function buildChromaticFilter(
  * Uses the same encoding approach as mini-svg-data-uri: only escape
  * characters that are unsafe in data URIs or CSS strings.
  *
+ * NOTE — double-encoding contract: the inner displacement map is already
+ * percent-encoded by {@link encodeSvgUrl} before being embedded in the
+ * `<feImage href>`. The `%`→`%25` pass below MUST run first so those existing
+ * `%` sequences are re-escaped exactly once; reordering the replacements would
+ * silently corrupt the data URI. Keep this in sync with {@link encodeSvgUrl}
+ * via the shared {@link minifySvg} helper.
+ *
  * @param {string} svg - Raw SVG string
  * @returns {string} `url("data:image/svg+xml,...")`
  */
 export function toDataUri(svg) {
-  // Try to minify SVG slightly by removing newlines and extraneous spaces before encoding
-  const minifiedSvg = svg.replace(/\n/g, "").replace(/\s*([<>])\s*/g, "$1");
-  const encoded = minifiedSvg
+  const encoded = minifySvg(svg)
     .replace(/"/g, "'")
     .replace(/%/g, "%25")
     .replace(/#/g, "%23")
