@@ -2,13 +2,15 @@
 
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import {
+  GLASS_BACKDROP_FILTER,
   buildDisplacementMapSvg,
   encodeSvgUrl,
   buildStandardFilter,
   buildChromaticFilter,
   toDataUri,
-} from "../../../../../packages/tw-glass/scripts/filter-builder.mjs";
-import { PATTERNS, unsplash, PatternPicker } from "../(home)/pattern-picker";
+} from "tw-glass/filter-builder";
+import { PATTERNS, PatternPicker } from "../(home)/pattern-picker";
+import { unsplash } from "../_shared/unsplash";
 import { cn } from "@/lib/utils";
 
 // ─── Types ─────────────────────────────────────────────────────────
@@ -141,20 +143,15 @@ export default function GlassTunerPage() {
     [filterUri, appearance],
   );
 
-  // Compile output CSS
+  // Compile output CSS. Mirrors the shipped `.glass` structure: the filter URI
+  // lives in an @utility (so Tailwind's variant/ordering machinery applies),
+  // while `backdrop-filter` is composed from tw-glass's OWN custom properties in
+  // @layer components — the same GLASS_BACKDROP_FILTER the generator emits, so a
+  // copy-pasted utility behaves identically to the built-in classes.
   const compiledCss = useMemo(() => {
     const lines: string[] = [];
     lines.push("@utility my-glass {");
     lines.push(`  --tw-glass-filter: ${filterUri};`);
-    lines.push(
-      "  --tw-backdrop-blur: var(--tw-glass-filter) blur(var(--tw-glass-blur));",
-    );
-    lines.push(
-      "  --tw-backdrop-brightness: brightness(var(--tw-glass-brightness));",
-    );
-    lines.push(
-      "  --tw-backdrop-saturate: saturate(var(--tw-glass-saturation));",
-    );
 
     if (appearance.blur !== DEFAULT_APPEARANCE.blur) {
       lines.push(`  --tw-glass-blur: ${appearance.blur}px;`);
@@ -171,14 +168,13 @@ export default function GlassTunerPage() {
 
     lines.push("}");
     lines.push("");
+    lines.push(
+      "/* Companion rule — @layer components is not stripped by Tailwind v4 */",
+    );
     lines.push("@layer components {");
     lines.push("  .my-glass {");
-    lines.push(
-      "    -webkit-backdrop-filter: var(--tw-backdrop-blur,) var(--tw-backdrop-brightness,) var(--tw-backdrop-contrast,) var(--tw-backdrop-grayscale,) var(--tw-backdrop-hue-rotate,) var(--tw-backdrop-invert,) var(--tw-backdrop-opacity,) var(--tw-backdrop-saturate,) var(--tw-backdrop-sepia,);",
-    );
-    lines.push(
-      "    backdrop-filter: var(--tw-backdrop-blur,) var(--tw-backdrop-brightness,) var(--tw-backdrop-contrast,) var(--tw-backdrop-grayscale,) var(--tw-backdrop-hue-rotate,) var(--tw-backdrop-invert,) var(--tw-backdrop-opacity,) var(--tw-backdrop-saturate,) var(--tw-backdrop-sepia,);",
-    );
+    lines.push(`    -webkit-backdrop-filter: ${GLASS_BACKDROP_FILTER};`);
+    lines.push(`    backdrop-filter: ${GLASS_BACKDROP_FILTER};`);
     lines.push("  }");
     lines.push("}");
     return lines.join("\n");
@@ -507,6 +503,7 @@ function seededRandom(i: number, salt: number) {
 }
 
 interface BubbleDef {
+  id: number; // stable positional identity (see computeBubbles)
   size: number;
   xPct: number; // horizontal position as % of container width
   duration: number; // animation duration in seconds
@@ -530,7 +527,10 @@ function computeBubbles(
     const effectiveMax = Math.max(speedMin, speedMax);
     const duration = speedMin + seededRandom(i, 2) * (effectiveMax - speedMin);
     const delay = -(seededRandom(i, 3) * duration); // stagger start
-    return { size, xPct, duration, delay };
+    // `id` is the seed index: bubble N is always bubble N, independent of the
+    // current count, so React keeps each slot's DOM node (and its in-flight CSS
+    // animation) when sliders change unrelated params.
+    return { id: i, size, xPct, duration, delay };
   });
 }
 
@@ -633,9 +633,9 @@ function SpringChain({
       ))}
 
       {/* Floating bubbles */}
-      {bubbles.map((b, i) => (
+      {bubbles.map((b) => (
         <div
-          key={i}
+          key={b.id}
           className={cn(
             "glass pointer-events-none absolute rounded-full",
             surfaceCls,
@@ -722,6 +722,13 @@ function Slider({
         <span>{label}</span>
         <span className="text-muted-foreground font-mono">{display}</span>
       </div>
+      {/*
+       * A native range input already exposes role=slider plus
+       * aria-valuenow/valuemin/valuemax from value/min/max, so we only add what
+       * the native semantics lack: an accessible name (aria-label) and a
+       * human-readable value (aria-valuetext) matching the on-screen `display`
+       * — e.g. "1.35x" or "42%" instead of the raw number.
+       */}
       <input
         type="range"
         min={min}
@@ -730,6 +737,8 @@ function Slider({
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
         className="w-full"
+        aria-label={label}
+        aria-valuetext={display}
       />
     </div>
   );
@@ -779,11 +788,18 @@ function BlendSelect({
         <span>Highlight blend</span>
         <span className="text-muted-foreground font-mono">{value}</span>
       </div>
-      <div className="flex flex-wrap gap-1.5">
+      {/* Single-select rendered as buttons → expose as an ARIA radiogroup. */}
+      <div
+        role="radiogroup"
+        aria-label="Highlight blend mode"
+        className="flex flex-wrap gap-1.5"
+      >
         {BLEND_MODES.map((mode) => (
           <button
             key={mode}
             type="button"
+            role="radio"
+            aria-checked={mode === value}
             onClick={() => onChange(mode)}
             className={cn("rounded-md px-2 py-1 text-xs transition-colors", {
               "bg-foreground text-background": mode === value,

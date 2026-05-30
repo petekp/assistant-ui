@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { unsplash } from "./pattern-picker";
+import { unsplash } from "../_shared/unsplash";
 
 export function DemoArea({
   children,

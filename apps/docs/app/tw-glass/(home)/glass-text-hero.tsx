@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useMotionValue, useSpring, useMotionValueEvent } from "motion/react";
 import { useControls, folder, button } from "leva";
 import { HERO_TEXT } from "./constants";
-import { unsplash } from "./pattern-picker";
+import { unsplash } from "../_shared/unsplash";
 
 const MOUSE_SPRING = { stiffness: 200, damping: 30, mass: 0.3 };
 
@@ -37,6 +37,7 @@ export function GlassTextHero({ bg }: { bg: string }) {
   const controlsRef = useRef<Record<string, unknown>>({});
   const diffPointLightRef = useRef<SVGFEPointLightElement>(null);
   const specPointLightRef = useRef<SVGFEPointLightElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
@@ -59,13 +60,36 @@ export function GlassTextHero({ bg }: { bg: string }) {
   });
 
   useEffect(() => {
+    // Motion opt-out: never attach the listener — the lighting stays at its
+    // default (centered) position instead of chasing the cursor.
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    // Only drive the springs while the hero is actually on screen. Without this
+    // the lighting filter keeps recomputing on every spring tick for the life
+    // of the page, even after the hero has scrolled far out of view.
+    let visible = true;
+    const el = containerRef.current;
+    const io = el
+      ? new IntersectionObserver(
+          ([entry]) => {
+            if (entry) visible = entry.isIntersecting;
+          },
+          { rootMargin: "100px" },
+        )
+      : null;
+    if (el) io?.observe(el);
+
     const range = 500;
     const onMove = (e: MouseEvent) => {
+      if (!visible) return;
       mouseX.set(((e.clientX / window.innerWidth) * 2 - 1) * range);
       mouseY.set(((e.clientY / window.innerHeight) * 2 - 1) * range);
     };
     window.addEventListener("mousemove", onMove);
-    return () => window.removeEventListener("mousemove", onMove);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      io?.disconnect();
+    };
   }, [mouseX, mouseY]);
 
   const controls = useControls({
@@ -221,21 +245,26 @@ export function GlassTextHero({ bg }: { bg: string }) {
     return () => clearTimeout(timer);
   }, [fadingBg]);
 
-  const textBgStyle = (bgId: string) => ({
-    color: "transparent" as const,
+  // The `.glass-text` utility (applied via className) owns the clip and the
+  // @supports-gated `color: transparent`, so we don't set those inline — that
+  // leaves a visible inherited text color where background-clip:text is
+  // unsupported. A solid `backgroundColor` is always set so the heading shows
+  // that color instead of vanishing if the remote image fails to load.
+  const textBgStyle = (bgId: string): React.CSSProperties => ({
+    backgroundColor: "#52525b",
     backgroundImage: controls.showBgImage
       ? `linear-gradient(rgba(255,255,255,${1 - controls.bgOpacity}),rgba(255,255,255,${1 - controls.bgOpacity})),${unsplash(bgId)}`
       : undefined,
-    backgroundColor: controls.showBgImage ? undefined : "#999",
-    backgroundSize: "cover" as const,
-    backgroundPosition: "center" as const,
-    backgroundAttachment: "fixed" as const,
-    backgroundClip: "text" as const,
-    WebkitBackgroundClip: "text",
+    backgroundSize: "cover",
+    backgroundPosition: "center",
+    backgroundAttachment: "fixed",
   });
 
   return (
-    <div className="pointer-events-none relative text-5xl font-bold tracking-tight select-none lg:text-7xl">
+    <div
+      ref={containerRef}
+      className="pointer-events-none relative text-5xl font-bold tracking-tight select-none lg:text-7xl"
+    >
       {/* SVG lighting filter — outputs only diffuse + specular (no SourceGraphic) */}
       <svg
         aria-hidden="true"
@@ -317,7 +346,7 @@ export function GlassTextHero({ bg }: { bg: string }) {
 
       {/* Current bg — always visible underneath */}
       <h1
-        className="pointer-events-auto inline text-9xl"
+        className="glass-text pointer-events-auto inline text-9xl"
         style={textBgStyle(bg)}
       >
         {HERO_TEXT}
@@ -327,7 +356,7 @@ export function GlassTextHero({ bg }: { bg: string }) {
       {fadingBg && (
         <span
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 text-9xl"
+          className="glass-text pointer-events-none absolute inset-0 text-9xl"
           style={{
             ...textBgStyle(fadingBg),
             animation: "glass-text-fade-out 600ms ease-out forwards",

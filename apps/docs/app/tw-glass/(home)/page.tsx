@@ -6,7 +6,8 @@ import { Copy, Check, Sparkle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SINE_VIGNETTE } from "./constants";
 import { GlassTextHero } from "./glass-text-hero";
-import { PATTERNS, unsplash, PatternPicker } from "./pattern-picker";
+import { PATTERNS, PatternPicker } from "./pattern-picker";
+import { unsplash } from "../_shared/unsplash";
 import { DemoArea, GlassDemo } from "./demo-components";
 import {
   HighlightStyles,

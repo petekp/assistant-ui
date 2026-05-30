@@ -1,12 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-
-export const unsplash = (id: string) =>
-  `url(https://images.unsplash.com/${id}?auto=format&fit=crop&w=1920&q=90)`;
-
-export const unsplashThumb = (id: string) =>
-  `url(https://images.unsplash.com/${id}?auto=format&fit=crop&w=88&h=88&q=60)`;
+import { unsplashThumb } from "../_shared/unsplash";
 
 export const PATTERNS = [
   { name: "Marble", id: "photo-1761419647919-233829f0f469" },
