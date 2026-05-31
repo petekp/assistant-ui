@@ -1,49 +1,63 @@
 /**
  * Shared SVG filter-building functions for tw-glass.
  *
- * Used by both the Node generator (scripts/generate.mjs) and the
- * browser-based tuner page. All functions are pure — no Node APIs,
- * no side effects.
+ * Used by the Node generator (scripts/generate.mjs). All functions are pure —
+ * no Node APIs, no side effects — so they also run unchanged in a browser tuner.
+ *
+ * ── Architecture (see REDESIGN.md) ─────────────────────────────────
+ * `.glass` ships ONE auto-routing surface:
+ *   • a premium cross-browser *approximation* (frost-on-host blur/saturate/
+ *     brightness + tint + specular sheen + asymmetric rim + layered depth +
+ *     baked grain) that renders in every engine and is never blank, plus
+ *   • a Chromium-only *true refraction* enhancement (an SVG displacement
+ *     `url()` re-declared inside an `@supports` gate) that Safari/Firefox never
+ *     see, so they keep the approximation instead of dropping the whole filter.
+ *
+ * This file owns the two SVG halves: the displacement filters (refraction) and
+ * the baked feTurbulence grain. The CSS scaffolding lives in generate.mjs.
  */
 
-// ─── Backdrop-filter composition ───────────────────────────────────
+// ─── Frost (the always-on, cross-browser backdrop-filter) ──────────
 
 /**
- * The "frost" half of the backdrop-filter: plain blur / brightness / saturation,
- * composed from tw-glass's OWN custom properties (no Tailwind `--tw-backdrop-*`
- * internals). These are universally-supported filter functions, so this is the
- * value the cross-browser `glass-frosted` utility applies on its own — and the
- * tail that `.glass` appends after the SVG displacement.
+ * The "frost" backdrop-filter: plain blur / saturate / brightness, composed
+ * from tw-glass's OWN custom properties (never Tailwind's `--tw-backdrop-*`
+ * internals). Every engine renders these filter functions, so this is the
+ * baseline `.glass` applies on its own; Chromium re-declares it with the
+ * displacement `url()` prepended inside the refraction gate.
  *
  * Each term reads a continuous modifier, falling back to its @property default.
  */
-export const GLASS_FROST_FILTER = [
+export const GLASS_FROST = [
   "blur(var(--tw-glass-blur))",
-  "brightness(var(--tw-glass-brightness))",
   "saturate(var(--tw-glass-saturation))",
+  "brightness(var(--tw-glass-brightness))",
 ].join(" ");
 
 /**
- * The `backdrop-filter` value applied to `.glass`: the SVG displacement filter
- * (`--tw-glass-filter`) followed by the frost terms. Exported so the generator
- * and the docs tuner share a single source of truth.
+ * Build the gated, Chromium-only backdrop-filter value: the refraction filter
+ * (`--tw-glass-refract`, defaulting to `defaultRefractUri`) followed by the
+ * frost terms. Lives only inside the `@supports` gate; Safari/FF never see it.
  *
- * The displacement `url()` renders only in Chromium; where it isn't supported
- * (Safari, Firefox) the entire value — frost included — is dropped, which is why
- * `glass-frosted` exists as the cross-browser alternative.
+ * @param {string} defaultRefractUri - `url("data:...#f")` used when no
+ *   `glass-refract-*` / `glass-aberration-*` modifier sets `--tw-glass-refract`.
+ * @returns {string} backdrop-filter value
  */
-export const GLASS_BACKDROP_FILTER = `var(--tw-glass-filter) ${GLASS_FROST_FILTER}`;
+export function glassRefractBackdrop(defaultRefractUri) {
+  return `var(--tw-glass-refract, ${defaultRefractUri}) ${GLASS_FROST}`;
+}
 
 // ─── Displacement Map ──────────────────────────────────────────────
 
 /**
  * Build the inner displacement-map SVG string.
  *
- * @param {object} opts
- * @param {number} opts.inset       - Inner rect inset from edges (viewBox units out of 100)
- * @param {number} opts.cornerRadius - Inner rect corner radius
- * @param {number} opts.innerBlur   - Gaussian blur for the inner (neutral) rect
- * @param {number} opts.outerBlur   - Gaussian blur wrapping the whole group
+ * @param {object} [opts]
+ * @param {number} [opts.inset]        - Inner rect inset from edges (viewBox units out of 100)
+ * @param {number} [opts.cornerRadius] - Inner rect corner radius
+ * @param {number} [opts.innerBlur]    - Gaussian blur for the inner (neutral) rect
+ * @param {number} [opts.outerBlur]    - Gaussian blur wrapping the whole group
+ * @param {"rect"|"circle"} [opts.shape] - Neutral shape
  * @returns {string} SVG markup
  */
 export function buildDisplacementMapSvg({
@@ -83,6 +97,38 @@ export function buildDisplacementMapSvg({
   ].join("");
 }
 
+// ─── Grain (baked feTurbulence, renders in every engine) ───────────
+
+/**
+ * Build a baked film-grain SVG: fractal-noise turbulence desaturated to
+ * grayscale (so it never tints dark UIs) at a fixed tile size, with the
+ * intensity baked into the rect's opacity. Used as a `background-image` on
+ * `.glass::before` and blended with `background-blend-mode: overlay`.
+ *
+ * @param {object} [opts]
+ * @param {number} [opts.size]          - Tile size in px (background-size matches)
+ * @param {number} [opts.baseFrequency] - feTurbulence base frequency (grain fineness)
+ * @param {number} [opts.numOctaves]    - feTurbulence octaves (grain richness)
+ * @param {number} [opts.opacity]       - Baked grain strength (0..1)
+ * @returns {string} SVG markup
+ */
+export function buildGrainSvg({
+  size = 120,
+  baseFrequency = 0.9,
+  numOctaves = 2,
+  opacity = 0.18,
+} = {}) {
+  return [
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}">`,
+    '<filter id="g" x="0" y="0" width="100%" height="100%">',
+    `<feTurbulence type="fractalNoise" baseFrequency="${baseFrequency}" numOctaves="${numOctaves}" stitchTiles="stitch"/>`,
+    '<feColorMatrix type="saturate" values="0"/>',
+    "</filter>",
+    `<rect width="100%" height="100%" filter="url(#g)" opacity="${opacity}"/>`,
+    "</svg>",
+  ].join("");
+}
+
 // ─── Encoding (isomorphic) ─────────────────────────────────────────
 
 /**
@@ -104,6 +150,9 @@ export function minifySvg(svg) {
  * the result is embedded inside a `<feImage href="...">` attribute that is
  * itself percent-encoded again by {@link toDataUri} (the "double-encoding"
  * contract — see the note there).
+ *
+ * @param {string} svg
+ * @returns {string}
  */
 export function encodeSvgUrl(svg) {
   return minifySvg(svg)
@@ -118,6 +167,10 @@ export function encodeSvgUrl(svg) {
 
 // ─── Filter Builders ───────────────────────────────────────────────
 
+/**
+ * @param {string} mapUrlEncoded
+ * @returns {string}
+ */
 function feImage(mapUrlEncoded) {
   return [
     `<feImage href="data:image/svg+xml,${mapUrlEncoded}"`,
@@ -160,8 +213,8 @@ export function buildStandardFilter(mapUrlEncoded, scale) {
  *
  * @param {string} mapUrlEncoded - URL-encoded displacement map SVG (from {@link encodeSvgUrl})
  * @param {number} scale         - Base displacement scale
- * @param {number} rRatio        - Red channel multiplier (default 1.4)
- * @param {number} gRatio        - Green channel multiplier (default 1.2)
+ * @param {number} [rRatio]      - Red channel multiplier (default 1.4)
+ * @param {number} [gRatio]      - Green channel multiplier (default 1.2)
  * @returns {string} Complete filter SVG
  */
 export function buildChromaticFilter(
@@ -193,29 +246,32 @@ export function buildChromaticFilter(
   ].join("");
 }
 
+// ─── Data-URI wrappers ─────────────────────────────────────────────
+
 /**
- * Encode an SVG string as a minimal CSS data URI.
- *
- * Uses the same encoding approach as mini-svg-data-uri: only escape
- * characters that are unsafe in data URIs or CSS strings.
+ * Wrap a filter SVG as a CSS data URI pointing at its `#f` filter — for use in
+ * `backdrop-filter`/`filter`.
  *
  * NOTE — double-encoding contract: the inner displacement map is already
  * percent-encoded by {@link encodeSvgUrl} before being embedded in the
- * `<feImage href>`. The `%`→`%25` pass below MUST run first so those existing
- * `%` sequences are re-escaped exactly once; reordering the replacements would
- * silently corrupt the data URI. Keep this in sync with {@link encodeSvgUrl}
- * via the shared {@link minifySvg} helper.
+ * `<feImage href>`. {@link encodeSvgUrl}'s `%`→`%25` pass runs first here too,
+ * so those existing `%` sequences are re-escaped exactly once; the two layers
+ * share {@link minifySvg}/{@link encodeSvgUrl} so they can never drift apart.
+ *
+ * @param {string} svg - Raw filter SVG string (must contain `<filter id="f">`)
+ * @returns {string} `url("data:image/svg+xml,...#f")`
+ */
+export function toDataUri(svg) {
+  return `url("data:image/svg+xml,${encodeSvgUrl(svg)}#f")`;
+}
+
+/**
+ * Wrap a paint SVG (e.g. the grain tile) as a CSS data URI for use in
+ * `background-image`. Unlike {@link toDataUri} this appends no `#f` fragment.
  *
  * @param {string} svg - Raw SVG string
  * @returns {string} `url("data:image/svg+xml,...")`
  */
-export function toDataUri(svg) {
-  const encoded = minifySvg(svg)
-    .replace(/"/g, "'")
-    .replace(/%/g, "%25")
-    .replace(/#/g, "%23")
-    .replace(/</g, "%3C")
-    .replace(/>/g, "%3E")
-    .replace(/\s+/g, "%20");
-  return `url("data:image/svg+xml,${encoded}#f")`;
+export function toBackgroundUri(svg) {
+  return `url("data:image/svg+xml,${encodeSvgUrl(svg)}")`;
 }

@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import {
-  GLASS_BACKDROP_FILTER,
+  glassRefractBackdrop,
   buildDisplacementMapSvg,
   encodeSvgUrl,
   buildStandardFilter,
@@ -130,28 +130,33 @@ export default function GlassTunerPage() {
     return toDataUri(filterSvg) as string;
   }, [map, filter]);
 
-  // Inline style for the preview element
+  // Inline style for the preview element. We set `--tw-glass-refract` (the gated
+  // Chromium refraction slot) so `.glass` picks up the tuned filter, and also
+  // apply `backdrop-filter` directly via `glassRefractBackdrop` so the live
+  // preview composes refraction + frost exactly like the shipped `.glass`.
   const previewStyle = useMemo<React.CSSProperties>(
     () =>
       ({
-        "--tw-glass-filter": filterUri,
+        "--tw-glass-refract": filterUri,
         "--tw-glass-blur": `${appearance.blur}px`,
         "--tw-glass-brightness": appearance.brightness,
         "--tw-glass-saturation": appearance.saturation,
-        "--glass-bg-opacity": appearance.bgOpacity,
+        "--tw-glass-bg-opacity": appearance.bgOpacity,
+        backdropFilter: glassRefractBackdrop(filterUri),
+        WebkitBackdropFilter: glassRefractBackdrop(filterUri),
       }) as React.CSSProperties,
     [filterUri, appearance],
   );
 
-  // Compile output CSS. Mirrors the shipped `.glass` structure: the filter URI
-  // lives in an @utility (so Tailwind's variant/ordering machinery applies),
+  // Compile output CSS. Mirrors the shipped `.glass` structure: the refraction
+  // URI lives in an @utility (so Tailwind's variant/ordering machinery applies),
   // while `backdrop-filter` is composed from tw-glass's OWN custom properties in
-  // @layer components — the same GLASS_BACKDROP_FILTER the generator emits, so a
+  // @layer components — the same value `glassRefractBackdrop` emits, so a
   // copy-pasted utility behaves identically to the built-in classes.
   const compiledCss = useMemo(() => {
     const lines: string[] = [];
     lines.push("@utility my-glass {");
-    lines.push(`  --tw-glass-filter: ${filterUri};`);
+    lines.push(`  --tw-glass-refract: ${filterUri};`);
 
     if (appearance.blur !== DEFAULT_APPEARANCE.blur) {
       lines.push(`  --tw-glass-blur: ${appearance.blur}px;`);
@@ -163,7 +168,7 @@ export default function GlassTunerPage() {
       lines.push(`  --tw-glass-saturation: ${appearance.saturation};`);
     }
     if (appearance.bgOpacity !== DEFAULT_APPEARANCE.bgOpacity) {
-      lines.push(`  --glass-bg-opacity: ${appearance.bgOpacity};`);
+      lines.push(`  --tw-glass-bg-opacity: ${appearance.bgOpacity};`);
     }
 
     lines.push("}");
@@ -173,8 +178,9 @@ export default function GlassTunerPage() {
     );
     lines.push("@layer components {");
     lines.push("  .my-glass {");
-    lines.push(`    -webkit-backdrop-filter: ${GLASS_BACKDROP_FILTER};`);
-    lines.push(`    backdrop-filter: ${GLASS_BACKDROP_FILTER};`);
+    const backdrop = glassRefractBackdrop(filterUri);
+    lines.push(`    -webkit-backdrop-filter: ${backdrop};`);
+    lines.push(`    backdrop-filter: ${backdrop};`);
     lines.push("  }");
     lines.push("}");
     return lines.join("\n");
@@ -192,7 +198,9 @@ export default function GlassTunerPage() {
     setAppearance(DEFAULT_APPEARANCE);
   }, []);
 
-  const surfaceCls = appearance.showSurface ? "glass-surface" : "";
+  // Surface styling folded into the single `glass` class, so the toggle now
+  // gates the base class itself.
+  const surfaceCls = appearance.showSurface ? "glass" : "";
 
   const bgUrl = unsplash(PATTERNS[bgIndex]!.id);
 
@@ -637,7 +645,7 @@ function SpringChain({
         <div
           key={b.id}
           className={cn(
-            "glass pointer-events-none absolute rounded-full",
+            "pointer-events-none absolute rounded-full",
             surfaceCls,
           )}
           style={{

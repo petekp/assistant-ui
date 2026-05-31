@@ -1,192 +1,233 @@
 /*
- * tw-glass — Tailwind CSS v4 plugin for glass refraction effects
+ * tw-glass — Tailwind CSS v4 plugin for premium glass surfaces
  *
  * GENERATED FILE — do not edit by hand.
  * Source: scripts/generate.mjs + scripts/filter-builder.mjs
  * Regenerate: pnpm --filter tw-glass generate
  *
- * Uses SVG displacement maps with filterUnits="objectBoundingBox" to create
- * glass-like refraction that scales with element size. No JavaScript, no
- * companion components — just CSS classes.
- *
- * Refraction (the url() SVG filter) renders in Chromium (Chrome/Edge) only.
- * Safari and Firefox do not apply an SVG filter reference in backdrop-filter,
- * and because it is composed into a single backdrop-filter value there is no
- * plain-blur fallback — a bare .glass shows no backdrop effect there. Use
- * glass-surface for a panel that stays visible cross-browser. See README.
+ * `glass` is ONE auto-routing class. Every engine gets a premium
+ * approximation (frost + tint + specular sheen + asymmetric rim + layered
+ * depth + baked grain). Chromium additionally gets true SVG refraction via
+ * an @supports gate; Safari/Firefox never see the url(), so they render the
+ * approximation instead of going blank. No JavaScript — just CSS classes.
  *
  * Usage:
  *   @import "tw-glass";
  *
- *   <div class="glass">                              <!-- default refraction -->
- *   <div class="glass glass-strength-40">             <!-- stronger -->
- *   <div class="glass glass-chromatic-20">            <!-- RGB splitting (replaces strength) -->
- *   <div class="glass glass-blur-4">                  <!-- custom blur (px) -->
- *   <div class="glass glass-saturation-150">          <!-- 150% saturation -->
- *   <div class="glass glass-brightness-110">          <!-- 110% brightness -->
- *   <div class="glass glass-surface">                 <!-- frosted surface -->
- *   <div class="glass-frosted">                       <!-- universal frosted glass (no refraction) -->
- *   <h1 class="glass-text">                              <!-- glass text effect -->
+ *   <div class="glass rounded-xl p-6">                 <!-- auto-routing glass -->
+ *   <div class="glass glass-tint-black rounded-xl">    <!-- smoked glass -->
+ *   <div class="glass glass-refract-40">               <!-- stronger refraction (Chromium) -->
+ *   <div class="glass glass-aberration-20">            <!-- chromatic refraction (Chromium) -->
+ *   <div class="glass glass-blur-8 glass-saturation-160"> <!-- frost tuning -->
+ *   <div class="glass glass-elevation-lg glass-sheen-150"> <!-- depth + highlight -->
+ *   <h1 class="glass-text" style="background-image:url(photo.jpg)"> <!-- glass text -->
  */
 
 /* ── Custom Properties ──────────────────────────────────────── */
+/*
+ * Typed (@property) so they animate and resist inheritance. --tw-glass-tint
+ * (RGB channels), --tw-glass-grain (url), --tw-glass-elevation (shadow list)
+ * and --tw-glass-refract (filter url) are set per-element on .glass / its
+ * modifiers instead — their value grammars don't map to a single @property
+ * <syntax>.
+ */
 
 @property --tw-glass-blur {
   syntax: "<length>";
   inherits: false;
-  initial-value: 2px;
-}
-
-@property --tw-glass-brightness {
-  syntax: "<number>";
-  inherits: false;
-  initial-value: 1.05;
+  initial-value: 12px;
 }
 
 @property --tw-glass-saturation {
   syntax: "<number>";
   inherits: false;
-  initial-value: 1.2;
+  initial-value: 1.8;
 }
 
-@property --glass-bg-opacity {
+@property --tw-glass-brightness {
   syntax: "<number>";
   inherits: false;
-  initial-value: 0.08;
+  initial-value: 1.06;
 }
 
-/* ── Base Glass Utility ─────────────────────────────────────── */
+@property --tw-glass-sheen {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 1;
+}
+
+@property --tw-glass-bg-opacity {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0.1;
+}
+
+/* ── Base Glass Surface ─────────────────────────────────────── */
 
 @utility glass {
-  --tw-glass-filter: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cfilter%20id='f'%20filterUnits='objectBoundingBox'%20primitiveUnits='objectBoundingBox'%20color-interpolation-filters='sRGB'%3E%3CfeImage%20href='data:image/svg+xml,%253Csvg%2520xmlns=%2522http://www.w3.org/2000/svg%2522%2520viewBox=%25220%25200%2520100%2520100%2522%2520preserveAspectRatio=%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id=%2522x%2522%2520x1=%25225%2525%2522%2520y1=%25220%2522%2520x2=%252295%2525%2522%2520y2=%25220%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%2523F00%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253ClinearGradient%2520id=%2522y%2522%2520x1=%25220%2522%2520y1=%25225%2525%2522%2520x2=%25220%2522%2520y2=%252295%2525%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%25230F0%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253Cfilter%2520id=%2522ob%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25221.5%2522/%253E%253C/filter%253E%253Cfilter%2520id=%2522ib%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25224%2522/%253E%253C/filter%253E%253C/defs%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523808080%2522/%253E%253Cg%2520filter=%2522url(%2523ob)%2522%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523000080%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523y)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523x)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520x=%25228%2522%2520y=%25228%2522%2520width=%252284%2522%2520height=%252284%2522%2520rx=%25224%2522%2520ry=%25224%2522%2520fill=%2522%2523808080%2522%2520filter=%2522url(%2523ib)%2522/%253E%253C/g%253E%253C/svg%253E'%20x='0'%20y='0'%20width='1'%20height='1'%20preserveAspectRatio='none'%20result='map'/%3E%3CfeDisplacementMap%20in='SourceGraphic'%20in2='map'%20scale='0.1'%20xChannelSelector='R'%20yChannelSelector='G'/%3E%3C/filter%3E%3C/defs%3E%3C/svg%3E#f");
+  --tw-glass-tint: 255 255 255;
+  --tw-glass-grain: url("data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%22120%22%20height=%22120%22%3E%3Cfilter%20id=%22g%22%20x=%220%22%20y=%220%22%20width=%22100%25%22%20height=%22100%25%22%3E%3CfeTurbulence%20type=%22fractalNoise%22%20baseFrequency=%220.9%22%20numOctaves=%222%22%20stitchTiles=%22stitch%22/%3E%3CfeColorMatrix%20type=%22saturate%22%20values=%220%22/%3E%3C/filter%3E%3Crect%20width=%22100%25%22%20height=%22100%25%22%20filter=%22url(%23g)%22%20opacity=%220.18%22/%3E%3C/svg%3E");
 }
 
-/* Companion rule — @layer components is not stripped by Tailwind v4 */
+/* Companion rules — @layer components is not stripped by Tailwind v4. */
 @layer components {
   .glass {
-    -webkit-backdrop-filter: var(--tw-glass-filter) blur(var(--tw-glass-blur))
-      brightness(var(--tw-glass-brightness))
-      saturate(var(--tw-glass-saturation));
-    backdrop-filter: var(--tw-glass-filter) blur(var(--tw-glass-blur))
-      brightness(var(--tw-glass-brightness))
-      saturate(var(--tw-glass-saturation));
-  }
-}
-
-/* ── Frosted Glass (cross-browser; no refraction) ──────────── */
-/*
- * glass-frosted is the universal alternative to glass: a plain frosted blur
- * (no SVG displacement) that renders in every engine, including Safari and
- * Firefox. An element gets a single backdrop-filter, so glass and
- * glass-frosted are MUTUALLY EXCLUSIVE — pick one base per element; don't
- * combine them. It honors the same glass-blur-* / glass-brightness-* /
- * glass-saturation-* modifiers and composes with glass-surface.
- */
-@layer components {
-  .glass-frosted {
+    position: relative;
+    isolation: isolate;
+    background: rgb(
+      var(--tw-glass-tint, 255 255 255) / var(--tw-glass-bg-opacity, 0.1)
+    );
+    /* Baseline frost — renders in every engine, never blank. */
     -webkit-backdrop-filter: blur(var(--tw-glass-blur))
-      brightness(var(--tw-glass-brightness))
-      saturate(var(--tw-glass-saturation));
+      saturate(var(--tw-glass-saturation))
+      brightness(var(--tw-glass-brightness));
     backdrop-filter: blur(var(--tw-glass-blur))
-      brightness(var(--tw-glass-brightness))
-      saturate(var(--tw-glass-saturation));
+      saturate(var(--tw-glass-saturation))
+      brightness(var(--tw-glass-brightness));
+    /* Asymmetric lit rim + layered depth. */
+    box-shadow:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.55),
+      inset 0 -1px 0 0 rgb(0 0 0 / 0.18),
+      inset 0 0 12px rgb(255 255 255 / 0.06),
+      var(
+        --tw-glass-elevation,
+        0 1px 2px rgb(0 0 0 / 0.12),
+        0 8px 24px rgb(0 0 0 / 0.1),
+        0 16px 40px rgb(0 0 0 / 0.08)
+      );
+  }
+
+  /* Specular sheen + baked grain, painted on the surface beneath content
+     (z-index:-1, inside the .glass stacking context) so text stays legible. */
+  .glass::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    pointer-events: none;
+    background-image:
+      linear-gradient(
+        to bottom,
+        rgb(255 255 255 / calc(0.55 * var(--tw-glass-sheen, 1))),
+        rgb(255 255 255 / 0.08) 35%,
+        transparent 60%
+      ),
+      var(--tw-glass-grain);
+    background-repeat: no-repeat, repeat;
+    background-size:
+      100% 100%,
+      120px 120px;
+    background-blend-mode: overlay, overlay;
+  }
+
+  /* Chromium-only true refraction. The gate is TRUE only in Chromium, so
+     Safari/Firefox never see the url() and keep the baseline frost above. */
+  @supports (not (-webkit-hyphens: none)) and (not (-moz-appearance: none)) {
+    .glass {
+      -webkit-backdrop-filter: var(
+          --tw-glass-refract,
+          url("data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cdefs%3E%3Cfilter%20id=%22f%22%20filterUnits=%22objectBoundingBox%22%20primitiveUnits=%22objectBoundingBox%22%20color-interpolation-filters=%22sRGB%22%3E%3CfeImage%20href=%22data:image/svg+xml,%253Csvg%2520xmlns=%2522http://www.w3.org/2000/svg%2522%2520viewBox=%25220%25200%2520100%2520100%2522%2520preserveAspectRatio=%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id=%2522x%2522%2520x1=%25225%2525%2522%2520y1=%25220%2522%2520x2=%252295%2525%2522%2520y2=%25220%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%2523F00%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253ClinearGradient%2520id=%2522y%2522%2520x1=%25220%2522%2520y1=%25225%2525%2522%2520x2=%25220%2522%2520y2=%252295%2525%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%25230F0%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253Cfilter%2520id=%2522ob%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25221.5%2522/%253E%253C/filter%253E%253Cfilter%2520id=%2522ib%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25224%2522/%253E%253C/filter%253E%253C/defs%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523808080%2522/%253E%253Cg%2520filter=%2522url(%2523ob)%2522%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523000080%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523y)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523x)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520x=%25228%2522%2520y=%25228%2522%2520width=%252284%2522%2520height=%252284%2522%2520rx=%25224%2522%2520ry=%25224%2522%2520fill=%2522%2523808080%2522%2520filter=%2522url(%2523ib)%2522/%253E%253C/g%253E%253C/svg%253E%22%20x=%220%22%20y=%220%22%20width=%221%22%20height=%221%22%20preserveAspectRatio=%22none%22%20result=%22map%22/%3E%3CfeDisplacementMap%20in=%22SourceGraphic%22%20in2=%22map%22%20scale=%220.1%22%20xChannelSelector=%22R%22%20yChannelSelector=%22G%22/%3E%3C/filter%3E%3C/defs%3E%3C/svg%3E#f")
+        )
+        blur(var(--tw-glass-blur)) saturate(var(--tw-glass-saturation))
+        brightness(var(--tw-glass-brightness));
+      backdrop-filter: var(
+          --tw-glass-refract,
+          url("data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cdefs%3E%3Cfilter%20id=%22f%22%20filterUnits=%22objectBoundingBox%22%20primitiveUnits=%22objectBoundingBox%22%20color-interpolation-filters=%22sRGB%22%3E%3CfeImage%20href=%22data:image/svg+xml,%253Csvg%2520xmlns=%2522http://www.w3.org/2000/svg%2522%2520viewBox=%25220%25200%2520100%2520100%2522%2520preserveAspectRatio=%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id=%2522x%2522%2520x1=%25225%2525%2522%2520y1=%25220%2522%2520x2=%252295%2525%2522%2520y2=%25220%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%2523F00%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253ClinearGradient%2520id=%2522y%2522%2520x1=%25220%2522%2520y1=%25225%2525%2522%2520x2=%25220%2522%2520y2=%252295%2525%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%25230F0%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253Cfilter%2520id=%2522ob%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25221.5%2522/%253E%253C/filter%253E%253Cfilter%2520id=%2522ib%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25224%2522/%253E%253C/filter%253E%253C/defs%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523808080%2522/%253E%253Cg%2520filter=%2522url(%2523ob)%2522%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523000080%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523y)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523x)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520x=%25228%2522%2520y=%25228%2522%2520width=%252284%2522%2520height=%252284%2522%2520rx=%25224%2522%2520ry=%25224%2522%2520fill=%2522%2523808080%2522%2520filter=%2522url(%2523ib)%2522/%253E%253C/g%253E%253C/svg%253E%22%20x=%220%22%20y=%220%22%20width=%221%22%20height=%221%22%20preserveAspectRatio=%22none%22%20result=%22map%22/%3E%3CfeDisplacementMap%20in=%22SourceGraphic%22%20in2=%22map%22%20scale=%220.1%22%20xChannelSelector=%22R%22%20yChannelSelector=%22G%22/%3E%3C/filter%3E%3C/defs%3E%3C/svg%3E#f")
+        )
+        blur(var(--tw-glass-blur)) saturate(var(--tw-glass-saturation))
+        brightness(var(--tw-glass-brightness));
+    }
   }
 }
 
-/* ── Surface Styling (compose with "glass") ────────────────── */
+/* ── Accessibility Fallbacks ────────────────────────────────── */
 /*
- * --tw-glass-tint is the surface tint as space-separated RGB channels
- * (default white). Override it for smoked/dark or brand-colored glass, e.g.
- *   <div class="glass glass-surface" style="--tw-glass-tint: 0 0 0">
- */
-
-@utility glass-surface {
-  background: rgb(var(--tw-glass-tint, 255 255 255) / var(--glass-bg-opacity));
-  box-shadow:
-    inset 0 0 0 1px rgb(255 255 255 / 0.15),
-    inset 0 1px 0 rgb(255 255 255 / 0.25),
-    0 8px 32px rgb(0 0 0 / 0.12);
-}
-
-/*
- * Accessibility fallbacks. Where the backdrop refraction can't render or
- * translucency is unwanted, fall back to an opaque, clearly-bordered panel
- * so content over glass-surface stays legible.
+ * Where translucency is unwanted or the effect can't render, fall back to
+ * an opaque, clearly-defined panel so content stays legible. Folded into
+ * the base so every .glass is accessible by default — no opt-in class.
  */
 @media (prefers-reduced-transparency: reduce) {
-  .glass-surface {
+  .glass {
     background: rgb(var(--tw-glass-tint, 255 255 255) / 0.9);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .glass::before {
+    display: none;
   }
 }
 
 @media (forced-colors: active) {
-  .glass-surface {
+  .glass {
     background: Canvas;
     border: 1px solid CanvasText;
     box-shadow: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .glass::before {
+    display: none;
   }
 }
 
-/* ── Displacement Strength ──────────────────────────────────── */
-/*
- * glass-strength-* and glass-chromatic-* both set --tw-glass-filter, so they
- * are MUTUALLY EXCLUSIVE — applying both keeps only one (chromatic is emitted
- * last, so it wins). Chromatic already includes displacement, so treat it as
- * a richer alternative to strength, not an addition. Pick one.
- */
+/* ── Tint (surface color; RGB channels) ─────────────────────── */
+/* Override --tw-glass-tint directly for arbitrary colors, e.g.
+   style="--tw-glass-tint: 12 74 110". */
 
-@utility glass-strength-5 {
-  --tw-glass-filter: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cfilter%20id='f'%20filterUnits='objectBoundingBox'%20primitiveUnits='objectBoundingBox'%20color-interpolation-filters='sRGB'%3E%3CfeImage%20href='data:image/svg+xml,%253Csvg%2520xmlns=%2522http://www.w3.org/2000/svg%2522%2520viewBox=%25220%25200%2520100%2520100%2522%2520preserveAspectRatio=%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id=%2522x%2522%2520x1=%25225%2525%2522%2520y1=%25220%2522%2520x2=%252295%2525%2522%2520y2=%25220%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%2523F00%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253ClinearGradient%2520id=%2522y%2522%2520x1=%25220%2522%2520y1=%25225%2525%2522%2520x2=%25220%2522%2520y2=%252295%2525%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%25230F0%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253Cfilter%2520id=%2522ob%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25221.5%2522/%253E%253C/filter%253E%253Cfilter%2520id=%2522ib%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25224%2522/%253E%253C/filter%253E%253C/defs%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523808080%2522/%253E%253Cg%2520filter=%2522url(%2523ob)%2522%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523000080%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523y)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523x)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520x=%25228%2522%2520y=%25228%2522%2520width=%252284%2522%2520height=%252284%2522%2520rx=%25224%2522%2520ry=%25224%2522%2520fill=%2522%2523808080%2522%2520filter=%2522url(%2523ib)%2522/%253E%253C/g%253E%253C/svg%253E'%20x='0'%20y='0'%20width='1'%20height='1'%20preserveAspectRatio='none'%20result='map'/%3E%3CfeDisplacementMap%20in='SourceGraphic'%20in2='map'%20scale='0.03'%20xChannelSelector='R'%20yChannelSelector='G'/%3E%3C/filter%3E%3C/defs%3E%3C/svg%3E#f");
+@utility glass-tint-white {
+  --tw-glass-tint: 255 255 255;
 }
 
-@utility glass-strength-10 {
-  --tw-glass-filter: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cfilter%20id='f'%20filterUnits='objectBoundingBox'%20primitiveUnits='objectBoundingBox'%20color-interpolation-filters='sRGB'%3E%3CfeImage%20href='data:image/svg+xml,%253Csvg%2520xmlns=%2522http://www.w3.org/2000/svg%2522%2520viewBox=%25220%25200%2520100%2520100%2522%2520preserveAspectRatio=%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id=%2522x%2522%2520x1=%25225%2525%2522%2520y1=%25220%2522%2520x2=%252295%2525%2522%2520y2=%25220%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%2523F00%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253ClinearGradient%2520id=%2522y%2522%2520x1=%25220%2522%2520y1=%25225%2525%2522%2520x2=%25220%2522%2520y2=%252295%2525%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%25230F0%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253Cfilter%2520id=%2522ob%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25221.5%2522/%253E%253C/filter%253E%253Cfilter%2520id=%2522ib%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25224%2522/%253E%253C/filter%253E%253C/defs%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523808080%2522/%253E%253Cg%2520filter=%2522url(%2523ob)%2522%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523000080%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523y)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523x)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520x=%25228%2522%2520y=%25228%2522%2520width=%252284%2522%2520height=%252284%2522%2520rx=%25224%2522%2520ry=%25224%2522%2520fill=%2522%2523808080%2522%2520filter=%2522url(%2523ib)%2522/%253E%253C/g%253E%253C/svg%253E'%20x='0'%20y='0'%20width='1'%20height='1'%20preserveAspectRatio='none'%20result='map'/%3E%3CfeDisplacementMap%20in='SourceGraphic'%20in2='map'%20scale='0.05'%20xChannelSelector='R'%20yChannelSelector='G'/%3E%3C/filter%3E%3C/defs%3E%3C/svg%3E#f");
+@utility glass-tint-black {
+  --tw-glass-tint: 0 0 0;
 }
 
-@utility glass-strength-20 {
-  --tw-glass-filter: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cfilter%20id='f'%20filterUnits='objectBoundingBox'%20primitiveUnits='objectBoundingBox'%20color-interpolation-filters='sRGB'%3E%3CfeImage%20href='data:image/svg+xml,%253Csvg%2520xmlns=%2522http://www.w3.org/2000/svg%2522%2520viewBox=%25220%25200%2520100%2520100%2522%2520preserveAspectRatio=%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id=%2522x%2522%2520x1=%25225%2525%2522%2520y1=%25220%2522%2520x2=%252295%2525%2522%2520y2=%25220%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%2523F00%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253ClinearGradient%2520id=%2522y%2522%2520x1=%25220%2522%2520y1=%25225%2525%2522%2520x2=%25220%2522%2520y2=%252295%2525%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%25230F0%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253Cfilter%2520id=%2522ob%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25221.5%2522/%253E%253C/filter%253E%253Cfilter%2520id=%2522ib%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25224%2522/%253E%253C/filter%253E%253C/defs%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523808080%2522/%253E%253Cg%2520filter=%2522url(%2523ob)%2522%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523000080%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523y)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523x)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520x=%25228%2522%2520y=%25228%2522%2520width=%252284%2522%2520height=%252284%2522%2520rx=%25224%2522%2520ry=%25224%2522%2520fill=%2522%2523808080%2522%2520filter=%2522url(%2523ib)%2522/%253E%253C/g%253E%253C/svg%253E'%20x='0'%20y='0'%20width='1'%20height='1'%20preserveAspectRatio='none'%20result='map'/%3E%3CfeDisplacementMap%20in='SourceGraphic'%20in2='map'%20scale='0.1'%20xChannelSelector='R'%20yChannelSelector='G'/%3E%3C/filter%3E%3C/defs%3E%3C/svg%3E#f");
+@utility glass-tint-slate {
+  --tw-glass-tint: 100 116 139;
 }
 
-@utility glass-strength-30 {
-  --tw-glass-filter: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cfilter%20id='f'%20filterUnits='objectBoundingBox'%20primitiveUnits='objectBoundingBox'%20color-interpolation-filters='sRGB'%3E%3CfeImage%20href='data:image/svg+xml,%253Csvg%2520xmlns=%2522http://www.w3.org/2000/svg%2522%2520viewBox=%25220%25200%2520100%2520100%2522%2520preserveAspectRatio=%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id=%2522x%2522%2520x1=%25225%2525%2522%2520y1=%25220%2522%2520x2=%252295%2525%2522%2520y2=%25220%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%2523F00%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253ClinearGradient%2520id=%2522y%2522%2520x1=%25220%2522%2520y1=%25225%2525%2522%2520x2=%25220%2522%2520y2=%252295%2525%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%25230F0%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253Cfilter%2520id=%2522ob%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25221.5%2522/%253E%253C/filter%253E%253Cfilter%2520id=%2522ib%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25224%2522/%253E%253C/filter%253E%253C/defs%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523808080%2522/%253E%253Cg%2520filter=%2522url(%2523ob)%2522%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523000080%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523y)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523x)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520x=%25228%2522%2520y=%25228%2522%2520width=%252284%2522%2520height=%252284%2522%2520rx=%25224%2522%2520ry=%25224%2522%2520fill=%2522%2523808080%2522%2520filter=%2522url(%2523ib)%2522/%253E%253C/g%253E%253C/svg%253E'%20x='0'%20y='0'%20width='1'%20height='1'%20preserveAspectRatio='none'%20result='map'/%3E%3CfeDisplacementMap%20in='SourceGraphic'%20in2='map'%20scale='0.15'%20xChannelSelector='R'%20yChannelSelector='G'/%3E%3C/filter%3E%3C/defs%3E%3C/svg%3E#f");
+@utility glass-tint-blue {
+  --tw-glass-tint: 59 130 246;
 }
 
-@utility glass-strength-40 {
-  --tw-glass-filter: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cfilter%20id='f'%20filterUnits='objectBoundingBox'%20primitiveUnits='objectBoundingBox'%20color-interpolation-filters='sRGB'%3E%3CfeImage%20href='data:image/svg+xml,%253Csvg%2520xmlns=%2522http://www.w3.org/2000/svg%2522%2520viewBox=%25220%25200%2520100%2520100%2522%2520preserveAspectRatio=%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id=%2522x%2522%2520x1=%25225%2525%2522%2520y1=%25220%2522%2520x2=%252295%2525%2522%2520y2=%25220%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%2523F00%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253ClinearGradient%2520id=%2522y%2522%2520x1=%25220%2522%2520y1=%25225%2525%2522%2520x2=%25220%2522%2520y2=%252295%2525%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%25230F0%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253Cfilter%2520id=%2522ob%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25221.5%2522/%253E%253C/filter%253E%253Cfilter%2520id=%2522ib%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25224%2522/%253E%253C/filter%253E%253C/defs%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523808080%2522/%253E%253Cg%2520filter=%2522url(%2523ob)%2522%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523000080%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523y)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523x)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520x=%25228%2522%2520y=%25228%2522%2520width=%252284%2522%2520height=%252284%2522%2520rx=%25224%2522%2520ry=%25224%2522%2520fill=%2522%2523808080%2522%2520filter=%2522url(%2523ib)%2522/%253E%253C/g%253E%253C/svg%253E'%20x='0'%20y='0'%20width='1'%20height='1'%20preserveAspectRatio='none'%20result='map'/%3E%3CfeDisplacementMap%20in='SourceGraphic'%20in2='map'%20scale='0.2'%20xChannelSelector='R'%20yChannelSelector='G'/%3E%3C/filter%3E%3C/defs%3E%3C/svg%3E#f");
+@utility glass-tint-emerald {
+  --tw-glass-tint: 16 185 129;
 }
 
-@utility glass-strength-50 {
-  --tw-glass-filter: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cfilter%20id='f'%20filterUnits='objectBoundingBox'%20primitiveUnits='objectBoundingBox'%20color-interpolation-filters='sRGB'%3E%3CfeImage%20href='data:image/svg+xml,%253Csvg%2520xmlns=%2522http://www.w3.org/2000/svg%2522%2520viewBox=%25220%25200%2520100%2520100%2522%2520preserveAspectRatio=%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id=%2522x%2522%2520x1=%25225%2525%2522%2520y1=%25220%2522%2520x2=%252295%2525%2522%2520y2=%25220%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%2523F00%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253ClinearGradient%2520id=%2522y%2522%2520x1=%25220%2522%2520y1=%25225%2525%2522%2520x2=%25220%2522%2520y2=%252295%2525%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%25230F0%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253Cfilter%2520id=%2522ob%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25221.5%2522/%253E%253C/filter%253E%253Cfilter%2520id=%2522ib%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25224%2522/%253E%253C/filter%253E%253C/defs%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523808080%2522/%253E%253Cg%2520filter=%2522url(%2523ob)%2522%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523000080%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523y)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523x)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520x=%25228%2522%2520y=%25228%2522%2520width=%252284%2522%2520height=%252284%2522%2520rx=%25224%2522%2520ry=%25224%2522%2520fill=%2522%2523808080%2522%2520filter=%2522url(%2523ib)%2522/%253E%253C/g%253E%253C/svg%253E'%20x='0'%20y='0'%20width='1'%20height='1'%20preserveAspectRatio='none'%20result='map'/%3E%3CfeDisplacementMap%20in='SourceGraphic'%20in2='map'%20scale='0.25'%20xChannelSelector='R'%20yChannelSelector='G'/%3E%3C/filter%3E%3C/defs%3E%3C/svg%3E#f");
+@utility glass-tint-amber {
+  --tw-glass-tint: 245 158 11;
 }
 
-/* ── Chromatic Aberration (RGB channel splitting) ──────────── */
-/* Includes displacement — use INSTEAD of glass-strength-*, not with it. */
-
-@utility glass-chromatic-5 {
-  --tw-glass-filter: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cfilter%20id='f'%20filterUnits='objectBoundingBox'%20primitiveUnits='objectBoundingBox'%20color-interpolation-filters='sRGB'%3E%3CfeImage%20href='data:image/svg+xml,%253Csvg%2520xmlns=%2522http://www.w3.org/2000/svg%2522%2520viewBox=%25220%25200%2520100%2520100%2522%2520preserveAspectRatio=%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id=%2522x%2522%2520x1=%25225%2525%2522%2520y1=%25220%2522%2520x2=%252295%2525%2522%2520y2=%25220%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%2523F00%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253ClinearGradient%2520id=%2522y%2522%2520x1=%25220%2522%2520y1=%25225%2525%2522%2520x2=%25220%2522%2520y2=%252295%2525%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%25230F0%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253Cfilter%2520id=%2522ob%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25221.5%2522/%253E%253C/filter%253E%253Cfilter%2520id=%2522ib%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25224%2522/%253E%253C/filter%253E%253C/defs%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523808080%2522/%253E%253Cg%2520filter=%2522url(%2523ob)%2522%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523000080%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523y)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523x)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520x=%25228%2522%2520y=%25228%2522%2520width=%252284%2522%2520height=%252284%2522%2520rx=%25224%2522%2520ry=%25224%2522%2520fill=%2522%2523808080%2522%2520filter=%2522url(%2523ib)%2522/%253E%253C/g%253E%253C/svg%253E'%20x='0'%20y='0'%20width='1'%20height='1'%20preserveAspectRatio='none'%20result='map'/%3E%3CfeDisplacementMap%20in='SourceGraphic'%20in2='map'%20scale='0.042'%20xChannelSelector='R'%20yChannelSelector='G'/%3E%3CfeColorMatrix%20type='matrix'%20values='1%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%201%200'%20result='dR'/%3E%3CfeDisplacementMap%20in='SourceGraphic'%20in2='map'%20scale='0.036'%20xChannelSelector='R'%20yChannelSelector='G'/%3E%3CfeColorMatrix%20type='matrix'%20values='0%200%200%200%200%200%201%200%200%200%200%200%200%200%200%200%200%200%201%200'%20result='dG'/%3E%3CfeDisplacementMap%20in='SourceGraphic'%20in2='map'%20scale='0.03'%20xChannelSelector='R'%20yChannelSelector='G'/%3E%3CfeColorMatrix%20type='matrix'%20values='0%200%200%200%200%200%200%200%200%200%200%200%201%200%200%200%200%200%201%200'%20result='dB'/%3E%3CfeBlend%20in='dR'%20in2='dG'%20mode='screen'%20result='rg'/%3E%3CfeBlend%20in='rg'%20in2='dB'%20mode='screen'/%3E%3C/filter%3E%3C/defs%3E%3C/svg%3E#f");
+@utility glass-tint-rose {
+  --tw-glass-tint: 244 63 94;
 }
 
-@utility glass-chromatic-10 {
-  --tw-glass-filter: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cfilter%20id='f'%20filterUnits='objectBoundingBox'%20primitiveUnits='objectBoundingBox'%20color-interpolation-filters='sRGB'%3E%3CfeImage%20href='data:image/svg+xml,%253Csvg%2520xmlns=%2522http://www.w3.org/2000/svg%2522%2520viewBox=%25220%25200%2520100%2520100%2522%2520preserveAspectRatio=%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id=%2522x%2522%2520x1=%25225%2525%2522%2520y1=%25220%2522%2520x2=%252295%2525%2522%2520y2=%25220%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%2523F00%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253ClinearGradient%2520id=%2522y%2522%2520x1=%25220%2522%2520y1=%25225%2525%2522%2520x2=%25220%2522%2520y2=%252295%2525%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%25230F0%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253Cfilter%2520id=%2522ob%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25221.5%2522/%253E%253C/filter%253E%253Cfilter%2520id=%2522ib%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25224%2522/%253E%253C/filter%253E%253C/defs%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523808080%2522/%253E%253Cg%2520filter=%2522url(%2523ob)%2522%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523000080%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523y)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523x)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520x=%25228%2522%2520y=%25228%2522%2520width=%252284%2522%2520height=%252284%2522%2520rx=%25224%2522%2520ry=%25224%2522%2520fill=%2522%2523808080%2522%2520filter=%2522url(%2523ib)%2522/%253E%253C/g%253E%253C/svg%253E'%20x='0'%20y='0'%20width='1'%20height='1'%20preserveAspectRatio='none'%20result='map'/%3E%3CfeDisplacementMap%20in='SourceGraphic'%20in2='map'%20scale='0.07'%20xChannelSelector='R'%20yChannelSelector='G'/%3E%3CfeColorMatrix%20type='matrix'%20values='1%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%201%200'%20result='dR'/%3E%3CfeDisplacementMap%20in='SourceGraphic'%20in2='map'%20scale='0.06'%20xChannelSelector='R'%20yChannelSelector='G'/%3E%3CfeColorMatrix%20type='matrix'%20values='0%200%200%200%200%200%201%200%200%200%200%200%200%200%200%200%200%200%201%200'%20result='dG'/%3E%3CfeDisplacementMap%20in='SourceGraphic'%20in2='map'%20scale='0.05'%20xChannelSelector='R'%20yChannelSelector='G'/%3E%3CfeColorMatrix%20type='matrix'%20values='0%200%200%200%200%200%200%200%200%200%200%200%201%200%200%200%200%200%201%200'%20result='dB'/%3E%3CfeBlend%20in='dR'%20in2='dG'%20mode='screen'%20result='rg'/%3E%3CfeBlend%20in='rg'%20in2='dB'%20mode='screen'/%3E%3C/filter%3E%3C/defs%3E%3C/svg%3E#f");
+@utility glass-tint-violet {
+  --tw-glass-tint: 139 92 246;
 }
 
-@utility glass-chromatic-20 {
-  --tw-glass-filter: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cfilter%20id='f'%20filterUnits='objectBoundingBox'%20primitiveUnits='objectBoundingBox'%20color-interpolation-filters='sRGB'%3E%3CfeImage%20href='data:image/svg+xml,%253Csvg%2520xmlns=%2522http://www.w3.org/2000/svg%2522%2520viewBox=%25220%25200%2520100%2520100%2522%2520preserveAspectRatio=%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id=%2522x%2522%2520x1=%25225%2525%2522%2520y1=%25220%2522%2520x2=%252295%2525%2522%2520y2=%25220%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%2523F00%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253ClinearGradient%2520id=%2522y%2522%2520x1=%25220%2522%2520y1=%25225%2525%2522%2520x2=%25220%2522%2520y2=%252295%2525%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%25230F0%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253Cfilter%2520id=%2522ob%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25221.5%2522/%253E%253C/filter%253E%253Cfilter%2520id=%2522ib%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25224%2522/%253E%253C/filter%253E%253C/defs%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523808080%2522/%253E%253Cg%2520filter=%2522url(%2523ob)%2522%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523000080%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523y)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523x)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520x=%25228%2522%2520y=%25228%2522%2520width=%252284%2522%2520height=%252284%2522%2520rx=%25224%2522%2520ry=%25224%2522%2520fill=%2522%2523808080%2522%2520filter=%2522url(%2523ib)%2522/%253E%253C/g%253E%253C/svg%253E'%20x='0'%20y='0'%20width='1'%20height='1'%20preserveAspectRatio='none'%20result='map'/%3E%3CfeDisplacementMap%20in='SourceGraphic'%20in2='map'%20scale='0.14'%20xChannelSelector='R'%20yChannelSelector='G'/%3E%3CfeColorMatrix%20type='matrix'%20values='1%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%201%200'%20result='dR'/%3E%3CfeDisplacementMap%20in='SourceGraphic'%20in2='map'%20scale='0.12'%20xChannelSelector='R'%20yChannelSelector='G'/%3E%3CfeColorMatrix%20type='matrix'%20values='0%200%200%200%200%200%201%200%200%200%200%200%200%200%200%200%200%200%201%200'%20result='dG'/%3E%3CfeDisplacementMap%20in='SourceGraphic'%20in2='map'%20scale='0.1'%20xChannelSelector='R'%20yChannelSelector='G'/%3E%3CfeColorMatrix%20type='matrix'%20values='0%200%200%200%200%200%200%200%200%200%200%200%201%200%200%200%200%200%201%200'%20result='dB'/%3E%3CfeBlend%20in='dR'%20in2='dG'%20mode='screen'%20result='rg'/%3E%3CfeBlend%20in='rg'%20in2='dB'%20mode='screen'/%3E%3C/filter%3E%3C/defs%3E%3C/svg%3E#f");
+/* ── Elevation (layered depth) ──────────────────────────────── */
+
+@utility glass-elevation-sm {
+  --tw-glass-elevation: 0 1px 2px rgb(0 0 0 / 0.12), 0 2px 8px rgb(0 0 0 / 0.1);
 }
 
-@utility glass-chromatic-30 {
-  --tw-glass-filter: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cfilter%20id='f'%20filterUnits='objectBoundingBox'%20primitiveUnits='objectBoundingBox'%20color-interpolation-filters='sRGB'%3E%3CfeImage%20href='data:image/svg+xml,%253Csvg%2520xmlns=%2522http://www.w3.org/2000/svg%2522%2520viewBox=%25220%25200%2520100%2520100%2522%2520preserveAspectRatio=%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id=%2522x%2522%2520x1=%25225%2525%2522%2520y1=%25220%2522%2520x2=%252295%2525%2522%2520y2=%25220%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%2523F00%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253ClinearGradient%2520id=%2522y%2522%2520x1=%25220%2522%2520y1=%25225%2525%2522%2520x2=%25220%2522%2520y2=%252295%2525%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%25230F0%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253Cfilter%2520id=%2522ob%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25221.5%2522/%253E%253C/filter%253E%253Cfilter%2520id=%2522ib%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25224%2522/%253E%253C/filter%253E%253C/defs%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523808080%2522/%253E%253Cg%2520filter=%2522url(%2523ob)%2522%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523000080%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523y)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523x)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520x=%25228%2522%2520y=%25228%2522%2520width=%252284%2522%2520height=%252284%2522%2520rx=%25224%2522%2520ry=%25224%2522%2520fill=%2522%2523808080%2522%2520filter=%2522url(%2523ib)%2522/%253E%253C/g%253E%253C/svg%253E'%20x='0'%20y='0'%20width='1'%20height='1'%20preserveAspectRatio='none'%20result='map'/%3E%3CfeDisplacementMap%20in='SourceGraphic'%20in2='map'%20scale='0.21'%20xChannelSelector='R'%20yChannelSelector='G'/%3E%3CfeColorMatrix%20type='matrix'%20values='1%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%201%200'%20result='dR'/%3E%3CfeDisplacementMap%20in='SourceGraphic'%20in2='map'%20scale='0.18'%20xChannelSelector='R'%20yChannelSelector='G'/%3E%3CfeColorMatrix%20type='matrix'%20values='0%200%200%200%200%200%201%200%200%200%200%200%200%200%200%200%200%200%201%200'%20result='dG'/%3E%3CfeDisplacementMap%20in='SourceGraphic'%20in2='map'%20scale='0.15'%20xChannelSelector='R'%20yChannelSelector='G'/%3E%3CfeColorMatrix%20type='matrix'%20values='0%200%200%200%200%200%200%200%200%200%200%200%201%200%200%200%200%200%201%200'%20result='dB'/%3E%3CfeBlend%20in='dR'%20in2='dG'%20mode='screen'%20result='rg'/%3E%3CfeBlend%20in='rg'%20in2='dB'%20mode='screen'/%3E%3C/filter%3E%3C/defs%3E%3C/svg%3E#f");
+@utility glass-elevation-md {
+  --tw-glass-elevation:
+    0 1px 2px rgb(0 0 0 / 0.12), 0 8px 24px rgb(0 0 0 / 0.1),
+    0 16px 40px rgb(0 0 0 / 0.08);
 }
 
-@utility glass-chromatic-40 {
-  --tw-glass-filter: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cfilter%20id='f'%20filterUnits='objectBoundingBox'%20primitiveUnits='objectBoundingBox'%20color-interpolation-filters='sRGB'%3E%3CfeImage%20href='data:image/svg+xml,%253Csvg%2520xmlns=%2522http://www.w3.org/2000/svg%2522%2520viewBox=%25220%25200%2520100%2520100%2522%2520preserveAspectRatio=%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id=%2522x%2522%2520x1=%25225%2525%2522%2520y1=%25220%2522%2520x2=%252295%2525%2522%2520y2=%25220%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%2523F00%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253ClinearGradient%2520id=%2522y%2522%2520x1=%25220%2522%2520y1=%25225%2525%2522%2520x2=%25220%2522%2520y2=%252295%2525%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%25230F0%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253Cfilter%2520id=%2522ob%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25221.5%2522/%253E%253C/filter%253E%253Cfilter%2520id=%2522ib%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25224%2522/%253E%253C/filter%253E%253C/defs%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523808080%2522/%253E%253Cg%2520filter=%2522url(%2523ob)%2522%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523000080%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523y)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523x)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520x=%25228%2522%2520y=%25228%2522%2520width=%252284%2522%2520height=%252284%2522%2520rx=%25224%2522%2520ry=%25224%2522%2520fill=%2522%2523808080%2522%2520filter=%2522url(%2523ib)%2522/%253E%253C/g%253E%253C/svg%253E'%20x='0'%20y='0'%20width='1'%20height='1'%20preserveAspectRatio='none'%20result='map'/%3E%3CfeDisplacementMap%20in='SourceGraphic'%20in2='map'%20scale='0.28'%20xChannelSelector='R'%20yChannelSelector='G'/%3E%3CfeColorMatrix%20type='matrix'%20values='1%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%201%200'%20result='dR'/%3E%3CfeDisplacementMap%20in='SourceGraphic'%20in2='map'%20scale='0.24'%20xChannelSelector='R'%20yChannelSelector='G'/%3E%3CfeColorMatrix%20type='matrix'%20values='0%200%200%200%200%200%201%200%200%200%200%200%200%200%200%200%200%200%201%200'%20result='dG'/%3E%3CfeDisplacementMap%20in='SourceGraphic'%20in2='map'%20scale='0.2'%20xChannelSelector='R'%20yChannelSelector='G'/%3E%3CfeColorMatrix%20type='matrix'%20values='0%200%200%200%200%200%200%200%200%200%200%200%201%200%200%200%200%200%201%200'%20result='dB'/%3E%3CfeBlend%20in='dR'%20in2='dG'%20mode='screen'%20result='rg'/%3E%3CfeBlend%20in='rg'%20in2='dB'%20mode='screen'/%3E%3C/filter%3E%3C/defs%3E%3C/svg%3E#f");
+@utility glass-elevation-lg {
+  --tw-glass-elevation:
+    0 2px 4px rgb(0 0 0 / 0.14), 0 12px 32px rgb(0 0 0 / 0.12),
+    0 24px 60px rgb(0 0 0 / 0.1);
 }
 
-@utility glass-chromatic-50 {
-  --tw-glass-filter: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cfilter%20id='f'%20filterUnits='objectBoundingBox'%20primitiveUnits='objectBoundingBox'%20color-interpolation-filters='sRGB'%3E%3CfeImage%20href='data:image/svg+xml,%253Csvg%2520xmlns=%2522http://www.w3.org/2000/svg%2522%2520viewBox=%25220%25200%2520100%2520100%2522%2520preserveAspectRatio=%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id=%2522x%2522%2520x1=%25225%2525%2522%2520y1=%25220%2522%2520x2=%252295%2525%2522%2520y2=%25220%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%2523F00%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253ClinearGradient%2520id=%2522y%2522%2520x1=%25220%2522%2520y1=%25225%2525%2522%2520x2=%25220%2522%2520y2=%252295%2525%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%25230F0%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253Cfilter%2520id=%2522ob%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25221.5%2522/%253E%253C/filter%253E%253Cfilter%2520id=%2522ib%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25224%2522/%253E%253C/filter%253E%253C/defs%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523808080%2522/%253E%253Cg%2520filter=%2522url(%2523ob)%2522%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523000080%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523y)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523x)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520x=%25228%2522%2520y=%25228%2522%2520width=%252284%2522%2520height=%252284%2522%2520rx=%25224%2522%2520ry=%25224%2522%2520fill=%2522%2523808080%2522%2520filter=%2522url(%2523ib)%2522/%253E%253C/g%253E%253C/svg%253E'%20x='0'%20y='0'%20width='1'%20height='1'%20preserveAspectRatio='none'%20result='map'/%3E%3CfeDisplacementMap%20in='SourceGraphic'%20in2='map'%20scale='0.35'%20xChannelSelector='R'%20yChannelSelector='G'/%3E%3CfeColorMatrix%20type='matrix'%20values='1%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%201%200'%20result='dR'/%3E%3CfeDisplacementMap%20in='SourceGraphic'%20in2='map'%20scale='0.3'%20xChannelSelector='R'%20yChannelSelector='G'/%3E%3CfeColorMatrix%20type='matrix'%20values='0%200%200%200%200%200%201%200%200%200%200%200%200%200%200%200%200%200%201%200'%20result='dG'/%3E%3CfeDisplacementMap%20in='SourceGraphic'%20in2='map'%20scale='0.25'%20xChannelSelector='R'%20yChannelSelector='G'/%3E%3CfeColorMatrix%20type='matrix'%20values='0%200%200%200%200%200%200%200%200%200%200%200%201%200%200%200%200%200%201%200'%20result='dB'/%3E%3CfeBlend%20in='dR'%20in2='dG'%20mode='screen'%20result='rg'/%3E%3CfeBlend%20in='rg'%20in2='dB'%20mode='screen'/%3E%3C/filter%3E%3C/defs%3E%3C/svg%3E#f");
-}
-
-/* ── Continuous Modifiers ───────────────────────────────────── */
+/* ── Frost & Sheen Modifiers ────────────────────────────────── */
+/* Each accepts a bare scale (glass-blur-8) or an arbitrary value
+   (glass-blur-[7px]); the arbitrary branch is taken as the raw CSS value. */
 
 @utility glass-blur-* {
   --tw-glass-blur: --value([length]);
@@ -203,25 +244,110 @@
   --tw-glass-brightness: calc(--value(number) / 100);
 }
 
-@utility glass-bg-* {
-  --glass-bg-opacity: --value([number]);
-  --glass-bg-opacity: calc(--value(number) * 0.01);
+@utility glass-sheen-* {
+  --tw-glass-sheen: --value([number]);
+  --tw-glass-sheen: calc(--value(number) / 100);
 }
 
-/* ── Glass Text Effect ─────────────────────────────────────── */
+@utility glass-bg-* {
+  --tw-glass-bg-opacity: --value([number]);
+  --tw-glass-bg-opacity: calc(--value(number) * 0.01);
+}
+
+/* ── Refraction (Chromium-only) ─────────────────────────────── */
 /*
- * Shows a background image through the text shape, like looking through
- * glass letters. Set `background-image` on the element; the text is only
- * clipped (and made transparent) where background-clip:text is supported, so
- * unsupported browsers keep visible text in its normal color.
- *
- * background-attachment: fixed gives a parallax-window effect on desktop but
- * is unreliable on iOS Safari (rendered as scroll).
+ * glass-refract-* and glass-aberration-* both define the single refraction
+ * filter (--tw-glass-refract), read only inside the Chromium gate above.
+ * Aberration is the chromatic flavor of refraction, so the two are
+ * alternatives — pick one. They are inert in Safari/Firefox (which keep the
+ * baseline frost) by design.
+ */
+
+@utility glass-refract-5 {
+  --tw-glass-refract: url("data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cdefs%3E%3Cfilter%20id=%22f%22%20filterUnits=%22objectBoundingBox%22%20primitiveUnits=%22objectBoundingBox%22%20color-interpolation-filters=%22sRGB%22%3E%3CfeImage%20href=%22data:image/svg+xml,%253Csvg%2520xmlns=%2522http://www.w3.org/2000/svg%2522%2520viewBox=%25220%25200%2520100%2520100%2522%2520preserveAspectRatio=%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id=%2522x%2522%2520x1=%25225%2525%2522%2520y1=%25220%2522%2520x2=%252295%2525%2522%2520y2=%25220%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%2523F00%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253ClinearGradient%2520id=%2522y%2522%2520x1=%25220%2522%2520y1=%25225%2525%2522%2520x2=%25220%2522%2520y2=%252295%2525%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%25230F0%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253Cfilter%2520id=%2522ob%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25221.5%2522/%253E%253C/filter%253E%253Cfilter%2520id=%2522ib%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25224%2522/%253E%253C/filter%253E%253C/defs%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523808080%2522/%253E%253Cg%2520filter=%2522url(%2523ob)%2522%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523000080%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523y)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523x)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520x=%25228%2522%2520y=%25228%2522%2520width=%252284%2522%2520height=%252284%2522%2520rx=%25224%2522%2520ry=%25224%2522%2520fill=%2522%2523808080%2522%2520filter=%2522url(%2523ib)%2522/%253E%253C/g%253E%253C/svg%253E%22%20x=%220%22%20y=%220%22%20width=%221%22%20height=%221%22%20preserveAspectRatio=%22none%22%20result=%22map%22/%3E%3CfeDisplacementMap%20in=%22SourceGraphic%22%20in2=%22map%22%20scale=%220.03%22%20xChannelSelector=%22R%22%20yChannelSelector=%22G%22/%3E%3C/filter%3E%3C/defs%3E%3C/svg%3E#f");
+}
+
+@utility glass-refract-10 {
+  --tw-glass-refract: url("data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cdefs%3E%3Cfilter%20id=%22f%22%20filterUnits=%22objectBoundingBox%22%20primitiveUnits=%22objectBoundingBox%22%20color-interpolation-filters=%22sRGB%22%3E%3CfeImage%20href=%22data:image/svg+xml,%253Csvg%2520xmlns=%2522http://www.w3.org/2000/svg%2522%2520viewBox=%25220%25200%2520100%2520100%2522%2520preserveAspectRatio=%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id=%2522x%2522%2520x1=%25225%2525%2522%2520y1=%25220%2522%2520x2=%252295%2525%2522%2520y2=%25220%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%2523F00%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253ClinearGradient%2520id=%2522y%2522%2520x1=%25220%2522%2520y1=%25225%2525%2522%2520x2=%25220%2522%2520y2=%252295%2525%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%25230F0%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253Cfilter%2520id=%2522ob%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25221.5%2522/%253E%253C/filter%253E%253Cfilter%2520id=%2522ib%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25224%2522/%253E%253C/filter%253E%253C/defs%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523808080%2522/%253E%253Cg%2520filter=%2522url(%2523ob)%2522%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523000080%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523y)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523x)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520x=%25228%2522%2520y=%25228%2522%2520width=%252284%2522%2520height=%252284%2522%2520rx=%25224%2522%2520ry=%25224%2522%2520fill=%2522%2523808080%2522%2520filter=%2522url(%2523ib)%2522/%253E%253C/g%253E%253C/svg%253E%22%20x=%220%22%20y=%220%22%20width=%221%22%20height=%221%22%20preserveAspectRatio=%22none%22%20result=%22map%22/%3E%3CfeDisplacementMap%20in=%22SourceGraphic%22%20in2=%22map%22%20scale=%220.05%22%20xChannelSelector=%22R%22%20yChannelSelector=%22G%22/%3E%3C/filter%3E%3C/defs%3E%3C/svg%3E#f");
+}
+
+@utility glass-refract-20 {
+  --tw-glass-refract: url("data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cdefs%3E%3Cfilter%20id=%22f%22%20filterUnits=%22objectBoundingBox%22%20primitiveUnits=%22objectBoundingBox%22%20color-interpolation-filters=%22sRGB%22%3E%3CfeImage%20href=%22data:image/svg+xml,%253Csvg%2520xmlns=%2522http://www.w3.org/2000/svg%2522%2520viewBox=%25220%25200%2520100%2520100%2522%2520preserveAspectRatio=%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id=%2522x%2522%2520x1=%25225%2525%2522%2520y1=%25220%2522%2520x2=%252295%2525%2522%2520y2=%25220%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%2523F00%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253ClinearGradient%2520id=%2522y%2522%2520x1=%25220%2522%2520y1=%25225%2525%2522%2520x2=%25220%2522%2520y2=%252295%2525%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%25230F0%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253Cfilter%2520id=%2522ob%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25221.5%2522/%253E%253C/filter%253E%253Cfilter%2520id=%2522ib%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25224%2522/%253E%253C/filter%253E%253C/defs%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523808080%2522/%253E%253Cg%2520filter=%2522url(%2523ob)%2522%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523000080%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523y)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523x)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520x=%25228%2522%2520y=%25228%2522%2520width=%252284%2522%2520height=%252284%2522%2520rx=%25224%2522%2520ry=%25224%2522%2520fill=%2522%2523808080%2522%2520filter=%2522url(%2523ib)%2522/%253E%253C/g%253E%253C/svg%253E%22%20x=%220%22%20y=%220%22%20width=%221%22%20height=%221%22%20preserveAspectRatio=%22none%22%20result=%22map%22/%3E%3CfeDisplacementMap%20in=%22SourceGraphic%22%20in2=%22map%22%20scale=%220.1%22%20xChannelSelector=%22R%22%20yChannelSelector=%22G%22/%3E%3C/filter%3E%3C/defs%3E%3C/svg%3E#f");
+}
+
+@utility glass-refract-30 {
+  --tw-glass-refract: url("data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cdefs%3E%3Cfilter%20id=%22f%22%20filterUnits=%22objectBoundingBox%22%20primitiveUnits=%22objectBoundingBox%22%20color-interpolation-filters=%22sRGB%22%3E%3CfeImage%20href=%22data:image/svg+xml,%253Csvg%2520xmlns=%2522http://www.w3.org/2000/svg%2522%2520viewBox=%25220%25200%2520100%2520100%2522%2520preserveAspectRatio=%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id=%2522x%2522%2520x1=%25225%2525%2522%2520y1=%25220%2522%2520x2=%252295%2525%2522%2520y2=%25220%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%2523F00%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253ClinearGradient%2520id=%2522y%2522%2520x1=%25220%2522%2520y1=%25225%2525%2522%2520x2=%25220%2522%2520y2=%252295%2525%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%25230F0%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253Cfilter%2520id=%2522ob%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25221.5%2522/%253E%253C/filter%253E%253Cfilter%2520id=%2522ib%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25224%2522/%253E%253C/filter%253E%253C/defs%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523808080%2522/%253E%253Cg%2520filter=%2522url(%2523ob)%2522%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523000080%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523y)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523x)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520x=%25228%2522%2520y=%25228%2522%2520width=%252284%2522%2520height=%252284%2522%2520rx=%25224%2522%2520ry=%25224%2522%2520fill=%2522%2523808080%2522%2520filter=%2522url(%2523ib)%2522/%253E%253C/g%253E%253C/svg%253E%22%20x=%220%22%20y=%220%22%20width=%221%22%20height=%221%22%20preserveAspectRatio=%22none%22%20result=%22map%22/%3E%3CfeDisplacementMap%20in=%22SourceGraphic%22%20in2=%22map%22%20scale=%220.15%22%20xChannelSelector=%22R%22%20yChannelSelector=%22G%22/%3E%3C/filter%3E%3C/defs%3E%3C/svg%3E#f");
+}
+
+@utility glass-refract-40 {
+  --tw-glass-refract: url("data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cdefs%3E%3Cfilter%20id=%22f%22%20filterUnits=%22objectBoundingBox%22%20primitiveUnits=%22objectBoundingBox%22%20color-interpolation-filters=%22sRGB%22%3E%3CfeImage%20href=%22data:image/svg+xml,%253Csvg%2520xmlns=%2522http://www.w3.org/2000/svg%2522%2520viewBox=%25220%25200%2520100%2520100%2522%2520preserveAspectRatio=%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id=%2522x%2522%2520x1=%25225%2525%2522%2520y1=%25220%2522%2520x2=%252295%2525%2522%2520y2=%25220%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%2523F00%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253ClinearGradient%2520id=%2522y%2522%2520x1=%25220%2522%2520y1=%25225%2525%2522%2520x2=%25220%2522%2520y2=%252295%2525%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%25230F0%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253Cfilter%2520id=%2522ob%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25221.5%2522/%253E%253C/filter%253E%253Cfilter%2520id=%2522ib%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25224%2522/%253E%253C/filter%253E%253C/defs%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523808080%2522/%253E%253Cg%2520filter=%2522url(%2523ob)%2522%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523000080%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523y)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523x)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520x=%25228%2522%2520y=%25228%2522%2520width=%252284%2522%2520height=%252284%2522%2520rx=%25224%2522%2520ry=%25224%2522%2520fill=%2522%2523808080%2522%2520filter=%2522url(%2523ib)%2522/%253E%253C/g%253E%253C/svg%253E%22%20x=%220%22%20y=%220%22%20width=%221%22%20height=%221%22%20preserveAspectRatio=%22none%22%20result=%22map%22/%3E%3CfeDisplacementMap%20in=%22SourceGraphic%22%20in2=%22map%22%20scale=%220.2%22%20xChannelSelector=%22R%22%20yChannelSelector=%22G%22/%3E%3C/filter%3E%3C/defs%3E%3C/svg%3E#f");
+}
+
+@utility glass-refract-50 {
+  --tw-glass-refract: url("data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cdefs%3E%3Cfilter%20id=%22f%22%20filterUnits=%22objectBoundingBox%22%20primitiveUnits=%22objectBoundingBox%22%20color-interpolation-filters=%22sRGB%22%3E%3CfeImage%20href=%22data:image/svg+xml,%253Csvg%2520xmlns=%2522http://www.w3.org/2000/svg%2522%2520viewBox=%25220%25200%2520100%2520100%2522%2520preserveAspectRatio=%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id=%2522x%2522%2520x1=%25225%2525%2522%2520y1=%25220%2522%2520x2=%252295%2525%2522%2520y2=%25220%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%2523F00%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253ClinearGradient%2520id=%2522y%2522%2520x1=%25220%2522%2520y1=%25225%2525%2522%2520x2=%25220%2522%2520y2=%252295%2525%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%25230F0%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253Cfilter%2520id=%2522ob%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25221.5%2522/%253E%253C/filter%253E%253Cfilter%2520id=%2522ib%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25224%2522/%253E%253C/filter%253E%253C/defs%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523808080%2522/%253E%253Cg%2520filter=%2522url(%2523ob)%2522%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523000080%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523y)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523x)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520x=%25228%2522%2520y=%25228%2522%2520width=%252284%2522%2520height=%252284%2522%2520rx=%25224%2522%2520ry=%25224%2522%2520fill=%2522%2523808080%2522%2520filter=%2522url(%2523ib)%2522/%253E%253C/g%253E%253C/svg%253E%22%20x=%220%22%20y=%220%22%20width=%221%22%20height=%221%22%20preserveAspectRatio=%22none%22%20result=%22map%22/%3E%3CfeDisplacementMap%20in=%22SourceGraphic%22%20in2=%22map%22%20scale=%220.25%22%20xChannelSelector=%22R%22%20yChannelSelector=%22G%22/%3E%3C/filter%3E%3C/defs%3E%3C/svg%3E#f");
+}
+
+@utility glass-aberration-5 {
+  --tw-glass-refract: url("data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cdefs%3E%3Cfilter%20id=%22f%22%20filterUnits=%22objectBoundingBox%22%20primitiveUnits=%22objectBoundingBox%22%20color-interpolation-filters=%22sRGB%22%3E%3CfeImage%20href=%22data:image/svg+xml,%253Csvg%2520xmlns=%2522http://www.w3.org/2000/svg%2522%2520viewBox=%25220%25200%2520100%2520100%2522%2520preserveAspectRatio=%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id=%2522x%2522%2520x1=%25225%2525%2522%2520y1=%25220%2522%2520x2=%252295%2525%2522%2520y2=%25220%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%2523F00%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253ClinearGradient%2520id=%2522y%2522%2520x1=%25220%2522%2520y1=%25225%2525%2522%2520x2=%25220%2522%2520y2=%252295%2525%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%25230F0%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253Cfilter%2520id=%2522ob%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25221.5%2522/%253E%253C/filter%253E%253Cfilter%2520id=%2522ib%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25224%2522/%253E%253C/filter%253E%253C/defs%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523808080%2522/%253E%253Cg%2520filter=%2522url(%2523ob)%2522%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523000080%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523y)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523x)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520x=%25228%2522%2520y=%25228%2522%2520width=%252284%2522%2520height=%252284%2522%2520rx=%25224%2522%2520ry=%25224%2522%2520fill=%2522%2523808080%2522%2520filter=%2522url(%2523ib)%2522/%253E%253C/g%253E%253C/svg%253E%22%20x=%220%22%20y=%220%22%20width=%221%22%20height=%221%22%20preserveAspectRatio=%22none%22%20result=%22map%22/%3E%3CfeDisplacementMap%20in=%22SourceGraphic%22%20in2=%22map%22%20scale=%220.042%22%20xChannelSelector=%22R%22%20yChannelSelector=%22G%22/%3E%3CfeColorMatrix%20type=%22matrix%22%20values=%221%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%201%200%22%20result=%22dR%22/%3E%3CfeDisplacementMap%20in=%22SourceGraphic%22%20in2=%22map%22%20scale=%220.036%22%20xChannelSelector=%22R%22%20yChannelSelector=%22G%22/%3E%3CfeColorMatrix%20type=%22matrix%22%20values=%220%200%200%200%200%200%201%200%200%200%200%200%200%200%200%200%200%200%201%200%22%20result=%22dG%22/%3E%3CfeDisplacementMap%20in=%22SourceGraphic%22%20in2=%22map%22%20scale=%220.03%22%20xChannelSelector=%22R%22%20yChannelSelector=%22G%22/%3E%3CfeColorMatrix%20type=%22matrix%22%20values=%220%200%200%200%200%200%200%200%200%200%200%200%201%200%200%200%200%200%201%200%22%20result=%22dB%22/%3E%3CfeBlend%20in=%22dR%22%20in2=%22dG%22%20mode=%22screen%22%20result=%22rg%22/%3E%3CfeBlend%20in=%22rg%22%20in2=%22dB%22%20mode=%22screen%22/%3E%3C/filter%3E%3C/defs%3E%3C/svg%3E#f");
+}
+
+@utility glass-aberration-10 {
+  --tw-glass-refract: url("data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cdefs%3E%3Cfilter%20id=%22f%22%20filterUnits=%22objectBoundingBox%22%20primitiveUnits=%22objectBoundingBox%22%20color-interpolation-filters=%22sRGB%22%3E%3CfeImage%20href=%22data:image/svg+xml,%253Csvg%2520xmlns=%2522http://www.w3.org/2000/svg%2522%2520viewBox=%25220%25200%2520100%2520100%2522%2520preserveAspectRatio=%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id=%2522x%2522%2520x1=%25225%2525%2522%2520y1=%25220%2522%2520x2=%252295%2525%2522%2520y2=%25220%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%2523F00%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253ClinearGradient%2520id=%2522y%2522%2520x1=%25220%2522%2520y1=%25225%2525%2522%2520x2=%25220%2522%2520y2=%252295%2525%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%25230F0%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253Cfilter%2520id=%2522ob%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25221.5%2522/%253E%253C/filter%253E%253Cfilter%2520id=%2522ib%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25224%2522/%253E%253C/filter%253E%253C/defs%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523808080%2522/%253E%253Cg%2520filter=%2522url(%2523ob)%2522%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523000080%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523y)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523x)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520x=%25228%2522%2520y=%25228%2522%2520width=%252284%2522%2520height=%252284%2522%2520rx=%25224%2522%2520ry=%25224%2522%2520fill=%2522%2523808080%2522%2520filter=%2522url(%2523ib)%2522/%253E%253C/g%253E%253C/svg%253E%22%20x=%220%22%20y=%220%22%20width=%221%22%20height=%221%22%20preserveAspectRatio=%22none%22%20result=%22map%22/%3E%3CfeDisplacementMap%20in=%22SourceGraphic%22%20in2=%22map%22%20scale=%220.07%22%20xChannelSelector=%22R%22%20yChannelSelector=%22G%22/%3E%3CfeColorMatrix%20type=%22matrix%22%20values=%221%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%201%200%22%20result=%22dR%22/%3E%3CfeDisplacementMap%20in=%22SourceGraphic%22%20in2=%22map%22%20scale=%220.06%22%20xChannelSelector=%22R%22%20yChannelSelector=%22G%22/%3E%3CfeColorMatrix%20type=%22matrix%22%20values=%220%200%200%200%200%200%201%200%200%200%200%200%200%200%200%200%200%200%201%200%22%20result=%22dG%22/%3E%3CfeDisplacementMap%20in=%22SourceGraphic%22%20in2=%22map%22%20scale=%220.05%22%20xChannelSelector=%22R%22%20yChannelSelector=%22G%22/%3E%3CfeColorMatrix%20type=%22matrix%22%20values=%220%200%200%200%200%200%200%200%200%200%200%200%201%200%200%200%200%200%201%200%22%20result=%22dB%22/%3E%3CfeBlend%20in=%22dR%22%20in2=%22dG%22%20mode=%22screen%22%20result=%22rg%22/%3E%3CfeBlend%20in=%22rg%22%20in2=%22dB%22%20mode=%22screen%22/%3E%3C/filter%3E%3C/defs%3E%3C/svg%3E#f");
+}
+
+@utility glass-aberration-20 {
+  --tw-glass-refract: url("data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cdefs%3E%3Cfilter%20id=%22f%22%20filterUnits=%22objectBoundingBox%22%20primitiveUnits=%22objectBoundingBox%22%20color-interpolation-filters=%22sRGB%22%3E%3CfeImage%20href=%22data:image/svg+xml,%253Csvg%2520xmlns=%2522http://www.w3.org/2000/svg%2522%2520viewBox=%25220%25200%2520100%2520100%2522%2520preserveAspectRatio=%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id=%2522x%2522%2520x1=%25225%2525%2522%2520y1=%25220%2522%2520x2=%252295%2525%2522%2520y2=%25220%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%2523F00%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253ClinearGradient%2520id=%2522y%2522%2520x1=%25220%2522%2520y1=%25225%2525%2522%2520x2=%25220%2522%2520y2=%252295%2525%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%25230F0%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253Cfilter%2520id=%2522ob%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25221.5%2522/%253E%253C/filter%253E%253Cfilter%2520id=%2522ib%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25224%2522/%253E%253C/filter%253E%253C/defs%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523808080%2522/%253E%253Cg%2520filter=%2522url(%2523ob)%2522%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523000080%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523y)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523x)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520x=%25228%2522%2520y=%25228%2522%2520width=%252284%2522%2520height=%252284%2522%2520rx=%25224%2522%2520ry=%25224%2522%2520fill=%2522%2523808080%2522%2520filter=%2522url(%2523ib)%2522/%253E%253C/g%253E%253C/svg%253E%22%20x=%220%22%20y=%220%22%20width=%221%22%20height=%221%22%20preserveAspectRatio=%22none%22%20result=%22map%22/%3E%3CfeDisplacementMap%20in=%22SourceGraphic%22%20in2=%22map%22%20scale=%220.14%22%20xChannelSelector=%22R%22%20yChannelSelector=%22G%22/%3E%3CfeColorMatrix%20type=%22matrix%22%20values=%221%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%201%200%22%20result=%22dR%22/%3E%3CfeDisplacementMap%20in=%22SourceGraphic%22%20in2=%22map%22%20scale=%220.12%22%20xChannelSelector=%22R%22%20yChannelSelector=%22G%22/%3E%3CfeColorMatrix%20type=%22matrix%22%20values=%220%200%200%200%200%200%201%200%200%200%200%200%200%200%200%200%200%200%201%200%22%20result=%22dG%22/%3E%3CfeDisplacementMap%20in=%22SourceGraphic%22%20in2=%22map%22%20scale=%220.1%22%20xChannelSelector=%22R%22%20yChannelSelector=%22G%22/%3E%3CfeColorMatrix%20type=%22matrix%22%20values=%220%200%200%200%200%200%200%200%200%200%200%200%201%200%200%200%200%200%201%200%22%20result=%22dB%22/%3E%3CfeBlend%20in=%22dR%22%20in2=%22dG%22%20mode=%22screen%22%20result=%22rg%22/%3E%3CfeBlend%20in=%22rg%22%20in2=%22dB%22%20mode=%22screen%22/%3E%3C/filter%3E%3C/defs%3E%3C/svg%3E#f");
+}
+
+@utility glass-aberration-30 {
+  --tw-glass-refract: url("data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cdefs%3E%3Cfilter%20id=%22f%22%20filterUnits=%22objectBoundingBox%22%20primitiveUnits=%22objectBoundingBox%22%20color-interpolation-filters=%22sRGB%22%3E%3CfeImage%20href=%22data:image/svg+xml,%253Csvg%2520xmlns=%2522http://www.w3.org/2000/svg%2522%2520viewBox=%25220%25200%2520100%2520100%2522%2520preserveAspectRatio=%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id=%2522x%2522%2520x1=%25225%2525%2522%2520y1=%25220%2522%2520x2=%252295%2525%2522%2520y2=%25220%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%2523F00%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253ClinearGradient%2520id=%2522y%2522%2520x1=%25220%2522%2520y1=%25225%2525%2522%2520x2=%25220%2522%2520y2=%252295%2525%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%25230F0%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253Cfilter%2520id=%2522ob%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25221.5%2522/%253E%253C/filter%253E%253Cfilter%2520id=%2522ib%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25224%2522/%253E%253C/filter%253E%253C/defs%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523808080%2522/%253E%253Cg%2520filter=%2522url(%2523ob)%2522%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523000080%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523y)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523x)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520x=%25228%2522%2520y=%25228%2522%2520width=%252284%2522%2520height=%252284%2522%2520rx=%25224%2522%2520ry=%25224%2522%2520fill=%2522%2523808080%2522%2520filter=%2522url(%2523ib)%2522/%253E%253C/g%253E%253C/svg%253E%22%20x=%220%22%20y=%220%22%20width=%221%22%20height=%221%22%20preserveAspectRatio=%22none%22%20result=%22map%22/%3E%3CfeDisplacementMap%20in=%22SourceGraphic%22%20in2=%22map%22%20scale=%220.21%22%20xChannelSelector=%22R%22%20yChannelSelector=%22G%22/%3E%3CfeColorMatrix%20type=%22matrix%22%20values=%221%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%201%200%22%20result=%22dR%22/%3E%3CfeDisplacementMap%20in=%22SourceGraphic%22%20in2=%22map%22%20scale=%220.18%22%20xChannelSelector=%22R%22%20yChannelSelector=%22G%22/%3E%3CfeColorMatrix%20type=%22matrix%22%20values=%220%200%200%200%200%200%201%200%200%200%200%200%200%200%200%200%200%200%201%200%22%20result=%22dG%22/%3E%3CfeDisplacementMap%20in=%22SourceGraphic%22%20in2=%22map%22%20scale=%220.15%22%20xChannelSelector=%22R%22%20yChannelSelector=%22G%22/%3E%3CfeColorMatrix%20type=%22matrix%22%20values=%220%200%200%200%200%200%200%200%200%200%200%200%201%200%200%200%200%200%201%200%22%20result=%22dB%22/%3E%3CfeBlend%20in=%22dR%22%20in2=%22dG%22%20mode=%22screen%22%20result=%22rg%22/%3E%3CfeBlend%20in=%22rg%22%20in2=%22dB%22%20mode=%22screen%22/%3E%3C/filter%3E%3C/defs%3E%3C/svg%3E#f");
+}
+
+@utility glass-aberration-40 {
+  --tw-glass-refract: url("data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cdefs%3E%3Cfilter%20id=%22f%22%20filterUnits=%22objectBoundingBox%22%20primitiveUnits=%22objectBoundingBox%22%20color-interpolation-filters=%22sRGB%22%3E%3CfeImage%20href=%22data:image/svg+xml,%253Csvg%2520xmlns=%2522http://www.w3.org/2000/svg%2522%2520viewBox=%25220%25200%2520100%2520100%2522%2520preserveAspectRatio=%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id=%2522x%2522%2520x1=%25225%2525%2522%2520y1=%25220%2522%2520x2=%252295%2525%2522%2520y2=%25220%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%2523F00%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253ClinearGradient%2520id=%2522y%2522%2520x1=%25220%2522%2520y1=%25225%2525%2522%2520x2=%25220%2522%2520y2=%252295%2525%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%25230F0%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253Cfilter%2520id=%2522ob%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25221.5%2522/%253E%253C/filter%253E%253Cfilter%2520id=%2522ib%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25224%2522/%253E%253C/filter%253E%253C/defs%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523808080%2522/%253E%253Cg%2520filter=%2522url(%2523ob)%2522%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523000080%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523y)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523x)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520x=%25228%2522%2520y=%25228%2522%2520width=%252284%2522%2520height=%252284%2522%2520rx=%25224%2522%2520ry=%25224%2522%2520fill=%2522%2523808080%2522%2520filter=%2522url(%2523ib)%2522/%253E%253C/g%253E%253C/svg%253E%22%20x=%220%22%20y=%220%22%20width=%221%22%20height=%221%22%20preserveAspectRatio=%22none%22%20result=%22map%22/%3E%3CfeDisplacementMap%20in=%22SourceGraphic%22%20in2=%22map%22%20scale=%220.28%22%20xChannelSelector=%22R%22%20yChannelSelector=%22G%22/%3E%3CfeColorMatrix%20type=%22matrix%22%20values=%221%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%201%200%22%20result=%22dR%22/%3E%3CfeDisplacementMap%20in=%22SourceGraphic%22%20in2=%22map%22%20scale=%220.24%22%20xChannelSelector=%22R%22%20yChannelSelector=%22G%22/%3E%3CfeColorMatrix%20type=%22matrix%22%20values=%220%200%200%200%200%200%201%200%200%200%200%200%200%200%200%200%200%200%201%200%22%20result=%22dG%22/%3E%3CfeDisplacementMap%20in=%22SourceGraphic%22%20in2=%22map%22%20scale=%220.2%22%20xChannelSelector=%22R%22%20yChannelSelector=%22G%22/%3E%3CfeColorMatrix%20type=%22matrix%22%20values=%220%200%200%200%200%200%200%200%200%200%200%200%201%200%200%200%200%200%201%200%22%20result=%22dB%22/%3E%3CfeBlend%20in=%22dR%22%20in2=%22dG%22%20mode=%22screen%22%20result=%22rg%22/%3E%3CfeBlend%20in=%22rg%22%20in2=%22dB%22%20mode=%22screen%22/%3E%3C/filter%3E%3C/defs%3E%3C/svg%3E#f");
+}
+
+@utility glass-aberration-50 {
+  --tw-glass-refract: url("data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cdefs%3E%3Cfilter%20id=%22f%22%20filterUnits=%22objectBoundingBox%22%20primitiveUnits=%22objectBoundingBox%22%20color-interpolation-filters=%22sRGB%22%3E%3CfeImage%20href=%22data:image/svg+xml,%253Csvg%2520xmlns=%2522http://www.w3.org/2000/svg%2522%2520viewBox=%25220%25200%2520100%2520100%2522%2520preserveAspectRatio=%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id=%2522x%2522%2520x1=%25225%2525%2522%2520y1=%25220%2522%2520x2=%252295%2525%2522%2520y2=%25220%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%2523F00%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253ClinearGradient%2520id=%2522y%2522%2520x1=%25220%2522%2520y1=%25225%2525%2522%2520x2=%25220%2522%2520y2=%252295%2525%2522%253E%253Cstop%2520offset=%25220%2525%2522%2520stop-color=%2522%25230F0%2522/%253E%253Cstop%2520offset=%2522100%2525%2522%2520stop-color=%2522%2523000%2522/%253E%253C/linearGradient%253E%253Cfilter%2520id=%2522ob%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25221.5%2522/%253E%253C/filter%253E%253Cfilter%2520id=%2522ib%2522%253E%253CfeGaussianBlur%2520stdDeviation=%25224%2522/%253E%253C/filter%253E%253C/defs%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523808080%2522/%253E%253Cg%2520filter=%2522url(%2523ob)%2522%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522%2523000080%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523y)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520width=%2522100%2522%2520height=%2522100%2522%2520fill=%2522url(%2523x)%2522%2520style=%2522mix-blend-mode:screen%2522/%253E%253Crect%2520x=%25228%2522%2520y=%25228%2522%2520width=%252284%2522%2520height=%252284%2522%2520rx=%25224%2522%2520ry=%25224%2522%2520fill=%2522%2523808080%2522%2520filter=%2522url(%2523ib)%2522/%253E%253C/g%253E%253C/svg%253E%22%20x=%220%22%20y=%220%22%20width=%221%22%20height=%221%22%20preserveAspectRatio=%22none%22%20result=%22map%22/%3E%3CfeDisplacementMap%20in=%22SourceGraphic%22%20in2=%22map%22%20scale=%220.35%22%20xChannelSelector=%22R%22%20yChannelSelector=%22G%22/%3E%3CfeColorMatrix%20type=%22matrix%22%20values=%221%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%201%200%22%20result=%22dR%22/%3E%3CfeDisplacementMap%20in=%22SourceGraphic%22%20in2=%22map%22%20scale=%220.3%22%20xChannelSelector=%22R%22%20yChannelSelector=%22G%22/%3E%3CfeColorMatrix%20type=%22matrix%22%20values=%220%200%200%200%200%200%201%200%200%200%200%200%200%200%200%200%200%200%201%200%22%20result=%22dG%22/%3E%3CfeDisplacementMap%20in=%22SourceGraphic%22%20in2=%22map%22%20scale=%220.25%22%20xChannelSelector=%22R%22%20yChannelSelector=%22G%22/%3E%3CfeColorMatrix%20type=%22matrix%22%20values=%220%200%200%200%200%200%200%200%200%200%200%200%201%200%200%200%200%200%201%200%22%20result=%22dB%22/%3E%3CfeBlend%20in=%22dR%22%20in2=%22dG%22%20mode=%22screen%22%20result=%22rg%22/%3E%3CfeBlend%20in=%22rg%22%20in2=%22dB%22%20mode=%22screen%22/%3E%3C/filter%3E%3C/defs%3E%3C/svg%3E#f");
+}
+
+/* ── Hero Rim (crisp lit ring via mask-composite) ───────────── */
+/* Optional upgrade: a 1px gradient ring that follows the rounded corners,
+   layered over the base rim for a sharper "lit edge". */
+@layer components {
+  .glass-rim-hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    padding: 1px;
+    pointer-events: none;
+    background: linear-gradient(
+      to bottom,
+      rgb(255 255 255 / 0.7),
+      rgb(255 255 255 / 0.05) 40%,
+      rgb(0 0 0 / 0.15)
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+  }
+}
+
+/* ── Glass Text Effect ──────────────────────────────────────── */
+/*
+ * Clips a background image to the text shape. Set background-image on the
+ * element; text is only made transparent where background-clip:text is
+ * supported, so unsupported browsers keep visible text.
  *
  * Usage:
- *   <h1 class="glass-text" style="background-image: url(photo.jpg)">
- *     tw-glass
- *   </h1>
+ *   <h1 class="glass-text" style="background-image: url(photo.jpg)">tw-glass</h1>
  */
 
 @utility glass-text {

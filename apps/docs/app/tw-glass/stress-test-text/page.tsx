@@ -379,11 +379,11 @@ function NestedContainersSection() {
     >
       <TestCard
         title="glass-text inside glass panels"
-        description="Glass text headings rendered within glass glass-surface containers."
+        description="Glass text headings rendered within glass containers."
       >
         <DemoArea>
           <div className="space-y-4">
-            <div className="glass glass-surface rounded-xl p-6">
+            <div className="glass rounded-xl p-6">
               <GlassText className="text-4xl font-bold">
                 Heading inside glass
               </GlassText>
@@ -393,16 +393,16 @@ function NestedContainersSection() {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="glass glass-surface glass-strength-30 rounded-xl p-6">
+              <div className="glass glass-refract-30 rounded-xl p-6">
                 <GlassText className="text-2xl font-bold">Panel A</GlassText>
               </div>
-              <div className="glass glass-surface glass-chromatic-20 rounded-xl p-6">
+              <div className="glass glass-aberration-20 rounded-xl p-6">
                 <GlassText className="text-2xl font-bold">Panel B</GlassText>
               </div>
             </div>
 
-            <div className="glass glass-surface rounded-xl p-6">
-              <div className="glass glass-surface rounded-lg p-4">
+            <div className="glass rounded-xl p-6">
+              <div className="glass rounded-lg p-4">
                 <GlassText className="text-3xl font-bold">
                   Double nested
                 </GlassText>

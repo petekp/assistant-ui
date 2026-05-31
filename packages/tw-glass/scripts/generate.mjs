@@ -2,9 +2,16 @@
 /**
  * Generates src/index.css for tw-glass.
  *
- * The displacement map SVG is URL-encoded once, then embedded inside each
- * filter SVG's <feImage href>. The outer filter SVG is URL-encoded again as a
- * data URI for use in backdrop-filter: url("data:...#f").
+ * `.glass` is ONE auto-routing surface (see REDESIGN.md):
+ *   • a premium cross-browser approximation (frost-on-host + tint + specular
+ *     sheen + asymmetric rim + layered depth + baked grain) that renders in
+ *     every engine and is never blank, plus
+ *   • a Chromium-only true-refraction enhancement (an SVG displacement `url()`
+ *     re-declared inside an `@supports` gate) that Safari/Firefox never see.
+ *
+ * The displacement map SVG is URL-encoded once, embedded inside each filter
+ * SVG's <feImage href>, then URL-encoded again as a data URI (the
+ * "double-encoding" contract in filter-builder.mjs).
  *
  * This file is the source of truth for src/index.css — never hand-edit the CSS.
  * Run: pnpm --filter tw-glass generate   (regenerates + formats)
@@ -14,27 +21,24 @@ import { writeFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  GLASS_BACKDROP_FILTER,
-  GLASS_FROST_FILTER,
+  GLASS_FROST,
+  glassRefractBackdrop,
   buildDisplacementMapSvg,
   encodeSvgUrl,
   buildStandardFilter,
   buildChromaticFilter,
+  buildGrainSvg,
   toDataUri,
+  toBackgroundUri,
 } from "./filter-builder.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-// ─── Displacement Map ──────────────────────────────────────────────
-
-const DISPLACEMENT_MAP_SVG = buildDisplacementMapSvg();
-const mapUrlEncoded = encodeSvgUrl(DISPLACEMENT_MAP_SVG);
-
-// ─── Strength Levels ───────────────────────────────────────────────
+// ─── Refraction scales ─────────────────────────────────────────────
 // Scale is in objectBoundingBox units (fraction of element size).
-// strength-20 at scale 0.10 matches the tested "standard" look.
+// refract-20 at scale 0.10 matches the tested "standard" look.
 
-const STRENGTHS = [
+const REFRACT_SCALES = [
   { name: "5", scale: 0.03 },
   { name: "10", scale: 0.05 },
   { name: "20", scale: 0.1 },
@@ -43,254 +47,278 @@ const STRENGTHS = [
   { name: "50", scale: 0.25 },
 ];
 
-const DEFAULT_STRENGTH = "20";
+const DEFAULT_REFRACT = "20";
 
-// ─── Filter Builders ───────────────────────────────────────────────
-// (imported from filter-builder.mjs)
+// ─── Tints (surface tint as space-separated RGB channels) ──────────
+// Channel triples mirror Tailwind's 500 shades; white/black are the workhorses.
 
-// ─── Generate CSS ──────────────────────────────────────────────────
+const TINTS = [
+  { name: "white", channels: "255 255 255" },
+  { name: "black", channels: "0 0 0" },
+  { name: "slate", channels: "100 116 139" },
+  { name: "blue", channels: "59 130 246" },
+  { name: "emerald", channels: "16 185 129" },
+  { name: "amber", channels: "245 158 11" },
+  { name: "rose", channels: "244 63 94" },
+  { name: "violet", channels: "139 92 246" },
+];
 
-const defaultScale = STRENGTHS.find((s) => s.name === DEFAULT_STRENGTH).scale;
-const defaultFilterUri = toDataUri(
+// ─── Elevation tiers (layered depth shadow) ────────────────────────
+// `md` matches the base default so `glass-elevation-md` is a no-op restate.
+
+const ELEVATION_MD =
+  "0 1px 2px rgb(0 0 0 / 0.12), 0 8px 24px rgb(0 0 0 / 0.10), 0 16px 40px rgb(0 0 0 / 0.08)";
+const ELEVATIONS = [
+  {
+    name: "sm",
+    shadow: "0 1px 2px rgb(0 0 0 / 0.12), 0 2px 8px rgb(0 0 0 / 0.10)",
+  },
+  { name: "md", shadow: ELEVATION_MD },
+  {
+    name: "lg",
+    shadow:
+      "0 2px 4px rgb(0 0 0 / 0.14), 0 12px 32px rgb(0 0 0 / 0.12), 0 24px 60px rgb(0 0 0 / 0.10)",
+  },
+];
+
+// The asymmetric inset rim (top-lit, bottom-shaded) + faint inner glow that
+// reads as a curved, lit glass edge. Prepended to the elevation in box-shadow.
+const RIM =
+  "inset 0 1px 0 0 rgb(255 255 255 / 0.55), inset 0 -1px 0 0 rgb(0 0 0 / 0.18), inset 0 0 12px rgb(255 255 255 / 0.06)";
+
+// ─── Derived SVG values ────────────────────────────────────────────
+
+const mapUrlEncoded = encodeSvgUrl(buildDisplacementMapSvg());
+const defaultScale = REFRACT_SCALES.find(
+  (s) => s.name === DEFAULT_REFRACT,
+).scale;
+const defaultRefractUri = toDataUri(
   buildStandardFilter(mapUrlEncoded, defaultScale),
 );
+const grainUri = toBackgroundUri(buildGrainSvg());
+
+// The specular sheen gradient (top-down highlight, scaled by --tw-glass-sheen).
+const SHEEN =
+  "linear-gradient(to bottom, rgb(255 255 255 / calc(0.55 * var(--tw-glass-sheen, 1))), rgb(255 255 255 / 0.08) 35%, transparent 60%)";
+
+// ─── Emit ──────────────────────────────────────────────────────────
 
 const lines = [];
 const emit = (s = "") => lines.push(s);
 
 emit(`/*`);
-emit(` * tw-glass — Tailwind CSS v4 plugin for glass refraction effects`);
+emit(` * tw-glass — Tailwind CSS v4 plugin for premium glass surfaces`);
 emit(` *`);
 emit(` * GENERATED FILE — do not edit by hand.`);
 emit(` * Source: scripts/generate.mjs + scripts/filter-builder.mjs`);
 emit(` * Regenerate: pnpm --filter tw-glass generate`);
 emit(` *`);
+emit(` * \`glass\` is ONE auto-routing class. Every engine gets a premium`);
 emit(
-  ` * Uses SVG displacement maps with filterUnits="objectBoundingBox" to create`,
+  ` * approximation (frost + tint + specular sheen + asymmetric rim + layered`,
 );
 emit(
-  ` * glass-like refraction that scales with element size. No JavaScript, no`,
-);
-emit(` * companion components — just CSS classes.`);
-emit(` *`);
-emit(
-  ` * Refraction (the url() SVG filter) renders in Chromium (Chrome/Edge) only.`,
+  ` * depth + baked grain). Chromium additionally gets true SVG refraction via`,
 );
 emit(
-  ` * Safari and Firefox do not apply an SVG filter reference in backdrop-filter,`,
+  ` * an @supports gate; Safari/Firefox never see the url(), so they render the`,
 );
 emit(
-  ` * and because it is composed into a single backdrop-filter value there is no`,
-);
-emit(
-  ` * plain-blur fallback — a bare .glass shows no backdrop effect there. Use`,
-);
-emit(
-  ` * glass-surface for a panel that stays visible cross-browser. See README.`,
+  ` * approximation instead of going blank. No JavaScript — just CSS classes.`,
 );
 emit(` *`);
 emit(` * Usage:`);
 emit(` *   @import "tw-glass";`);
 emit(` *`);
 emit(
-  ` *   <div class="glass">                              <!-- default refraction -->`,
+  ` *   <div class="glass rounded-xl p-6">                 <!-- auto-routing glass -->`,
 );
 emit(
-  ` *   <div class="glass glass-strength-40">             <!-- stronger -->`,
+  ` *   <div class="glass glass-tint-black rounded-xl">    <!-- smoked glass -->`,
 );
 emit(
-  ` *   <div class="glass glass-chromatic-20">            <!-- RGB splitting (replaces strength) -->`,
+  ` *   <div class="glass glass-refract-40">               <!-- stronger refraction (Chromium) -->`,
 );
 emit(
-  ` *   <div class="glass glass-blur-4">                  <!-- custom blur (px) -->`,
+  ` *   <div class="glass glass-aberration-20">            <!-- chromatic refraction (Chromium) -->`,
 );
 emit(
-  ` *   <div class="glass glass-saturation-150">          <!-- 150% saturation -->`,
+  ` *   <div class="glass glass-blur-8 glass-saturation-160"> <!-- frost tuning -->`,
 );
 emit(
-  ` *   <div class="glass glass-brightness-110">          <!-- 110% brightness -->`,
+  ` *   <div class="glass glass-elevation-lg glass-sheen-150"> <!-- depth + highlight -->`,
 );
 emit(
-  ` *   <div class="glass glass-surface">                 <!-- frosted surface -->`,
-);
-emit(
-  ` *   <div class="glass-frosted">                       <!-- universal frosted glass (no refraction) -->`,
-);
-emit(
-  ` *   <h1 class="glass-text">                              <!-- glass text effect -->`,
+  ` *   <h1 class="glass-text" style="background-image:url(photo.jpg)"> <!-- glass text -->`,
 );
 emit(` */`);
 emit();
 
-// Custom properties
+// ── Custom properties ──────────────────────────────────────────────
 emit(`/* ── Custom Properties ──────────────────────────────────────── */`);
+emit(`/*`);
+emit(
+  ` * Typed (@property) so they animate and resist inheritance. --tw-glass-tint`,
+);
+emit(
+  ` * (RGB channels), --tw-glass-grain (url), --tw-glass-elevation (shadow list)`,
+);
+emit(
+  ` * and --tw-glass-refract (filter url) are set per-element on .glass / its`,
+);
+emit(
+  ` * modifiers instead — their value grammars don't map to a single @property`,
+);
+emit(` * <syntax>.`);
+emit(` */`);
 emit();
-emit(`@property --tw-glass-blur {`);
-emit(`  syntax: "<length>";`);
-emit(`  inherits: false;`);
-emit(`  initial-value: 2px;`);
-emit(`}`);
-emit();
-emit(`@property --tw-glass-brightness {`);
-emit(`  syntax: "<number>";`);
-emit(`  inherits: false;`);
-emit(`  initial-value: 1.05;`);
-emit(`}`);
-emit();
-emit(`@property --tw-glass-saturation {`);
-emit(`  syntax: "<number>";`);
-emit(`  inherits: false;`);
-emit(`  initial-value: 1.2;`);
-emit(`}`);
-emit();
-emit(`@property --glass-bg-opacity {`);
-emit(`  syntax: "<number>";`);
-emit(`  inherits: false;`);
-emit(`  initial-value: 0.08;`);
-emit(`}`);
-emit();
+const cssProps = [
+  { name: "--tw-glass-blur", syntax: "<length>", initial: "12px" },
+  { name: "--tw-glass-saturation", syntax: "<number>", initial: "1.8" },
+  { name: "--tw-glass-brightness", syntax: "<number>", initial: "1.06" },
+  { name: "--tw-glass-sheen", syntax: "<number>", initial: "1" },
+  { name: "--tw-glass-bg-opacity", syntax: "<number>", initial: "0.1" },
+];
+for (const { name, syntax, initial } of cssProps) {
+  emit(`@property ${name} {`);
+  emit(`  syntax: "${syntax}";`);
+  emit(`  inherits: false;`);
+  emit(`  initial-value: ${initial};`);
+  emit(`}`);
+  emit();
+}
 
-// ─── Backdrop composition ─────────────────────────────────────────────
-// Tailwind v4 "owns" the backdrop-filter property: it strips any
-// backdrop-filter declaration from utility-layer CSS (@utility / @layer
-// utilities) and only emits it via its own internal composition. We work
-// around that by applying backdrop-filter in @layer components, which Tailwind
-// passes through untouched.
-//
-// The value is composed from tw-glass's OWN custom properties
-// (--tw-glass-filter / --tw-glass-blur / --tw-glass-brightness /
-// --tw-glass-saturation), NOT Tailwind's private --tw-backdrop-* internals.
-// This keeps the effect from breaking if Tailwind renames its internals, and
-// stops `glass` from fighting Tailwind's own backdrop-* utilities over a shared
-// variable. (Note: a single element can still only have one backdrop-filter, so
-// applying `glass` and e.g. `backdrop-blur-md` together is unsupported — use the
-// `glass-blur-*` modifier instead. See README.)
-
-emit(`/* ── Base Glass Utility ─────────────────────────────────────── */`);
+// ── Base utility ───────────────────────────────────────────────────
+// Tailwind v4 "owns" backdrop-filter (it strips the property from the utilities
+// layer), so the visual rules live in @layer components, which Tailwind passes
+// through untouched. The @utility block only seeds per-element defaults that the
+// modifiers override (tint, grain) so they participate in Tailwind's ordering.
+emit(`/* ── Base Glass Surface ─────────────────────────────────────── */`);
 emit();
 emit(`@utility glass {`);
-emit(`  --tw-glass-filter: ${defaultFilterUri};`);
+emit(`  --tw-glass-tint: 255 255 255;`);
+emit(`  --tw-glass-grain: ${grainUri};`);
 emit(`}`);
 emit();
-emit(`/* Companion rule — @layer components is not stripped by Tailwind v4 */`);
+emit(
+  `/* Companion rules — @layer components is not stripped by Tailwind v4. */`,
+);
 emit(`@layer components {`);
 emit(`  .glass {`);
-emit(`    -webkit-backdrop-filter: ${GLASS_BACKDROP_FILTER};`);
-emit(`    backdrop-filter: ${GLASS_BACKDROP_FILTER};`);
+emit(`    position: relative;`);
+emit(`    isolation: isolate;`);
+emit(
+  `    background: rgb(var(--tw-glass-tint, 255 255 255) / var(--tw-glass-bg-opacity, 0.1));`,
+);
+emit(`    /* Baseline frost — renders in every engine, never blank. */`);
+emit(`    -webkit-backdrop-filter: ${GLASS_FROST};`);
+emit(`    backdrop-filter: ${GLASS_FROST};`);
+emit(`    /* Asymmetric lit rim + layered depth. */`);
+emit(`    box-shadow: ${RIM}, var(--tw-glass-elevation, ${ELEVATION_MD});`);
+emit(`  }`);
+emit();
+emit(
+  `  /* Specular sheen + baked grain, painted on the surface beneath content`,
+);
+emit(
+  `     (z-index:-1, inside the .glass stacking context) so text stays legible. */`,
+);
+emit(`  .glass::before {`);
+emit(`    content: "";`);
+emit(`    position: absolute;`);
+emit(`    inset: 0;`);
+emit(`    z-index: -1;`);
+emit(`    border-radius: inherit;`);
+emit(`    pointer-events: none;`);
+emit(`    background-image: ${SHEEN}, var(--tw-glass-grain);`);
+emit(`    background-repeat: no-repeat, repeat;`);
+emit(`    background-size: 100% 100%, 120px 120px;`);
+emit(`    background-blend-mode: overlay, overlay;`);
+emit(`  }`);
+emit();
+emit(
+  `  /* Chromium-only true refraction. The gate is TRUE only in Chromium, so`,
+);
+emit(
+  `     Safari/Firefox never see the url() and keep the baseline frost above. */`,
+);
+emit(
+  `  @supports (not (-webkit-hyphens: none)) and (not (-moz-appearance: none)) {`,
+);
+emit(`    .glass {`);
+emit(
+  `      -webkit-backdrop-filter: ${glassRefractBackdrop(defaultRefractUri)};`,
+);
+emit(`      backdrop-filter: ${glassRefractBackdrop(defaultRefractUri)};`);
+emit(`    }`);
 emit(`  }`);
 emit(`}`);
 emit();
 
-// Frosted glass — the cross-browser base
-emit(`/* ── Frosted Glass (cross-browser; no refraction) ──────────── */`);
+// ── Accessibility fallbacks (folded into the base) ─────────────────
+emit(`/* ── Accessibility Fallbacks ────────────────────────────────── */`);
 emit(`/*`);
 emit(
-  ` * glass-frosted is the universal alternative to glass: a plain frosted blur`,
+  ` * Where translucency is unwanted or the effect can't render, fall back to`,
 );
 emit(
-  ` * (no SVG displacement) that renders in every engine, including Safari and`,
+  ` * an opaque, clearly-defined panel so content stays legible. Folded into`,
 );
-emit(` * Firefox. An element gets a single backdrop-filter, so glass and`);
-emit(
-  ` * glass-frosted are MUTUALLY EXCLUSIVE — pick one base per element; don't`,
-);
-emit(` * combine them. It honors the same glass-blur-* / glass-brightness-* /`);
-emit(` * glass-saturation-* modifiers and composes with glass-surface.`);
-emit(` */`);
-emit(`@layer components {`);
-emit(`  .glass-frosted {`);
-emit(`    -webkit-backdrop-filter: ${GLASS_FROST_FILTER};`);
-emit(`    backdrop-filter: ${GLASS_FROST_FILTER};`);
-emit(`  }`);
-emit(`}`);
-emit();
-
-// Surface styling
-emit(`/* ── Surface Styling (compose with "glass") ────────────────── */`);
-emit(`/*`);
-emit(` * --tw-glass-tint is the surface tint as space-separated RGB channels`);
-emit(
-  ` * (default white). Override it for smoked/dark or brand-colored glass, e.g.`,
-);
-emit(` *   <div class="glass glass-surface" style="--tw-glass-tint: 0 0 0">`);
-emit(` */`);
-emit();
-emit(`@utility glass-surface {`);
-emit(
-  `  background: rgb(var(--tw-glass-tint, 255 255 255) / var(--glass-bg-opacity));`,
-);
-emit(`  box-shadow:`);
-emit(`    inset 0 0 0 1px rgb(255 255 255 / 0.15),`);
-emit(`    inset 0 1px 0 rgb(255 255 255 / 0.25),`);
-emit(`    0 8px 32px rgb(0 0 0 / 0.12);`);
-emit(`}`);
-emit();
-emit(`/*`);
-emit(
-  ` * Accessibility fallbacks. Where the backdrop refraction can't render or`,
-);
-emit(
-  ` * translucency is unwanted, fall back to an opaque, clearly-bordered panel`,
-);
-emit(` * so content over glass-surface stays legible.`);
+emit(` * the base so every .glass is accessible by default — no opt-in class.`);
 emit(` */`);
 emit(`@media (prefers-reduced-transparency: reduce) {`);
-emit(`  .glass-surface {`);
+emit(`  .glass {`);
 emit(`    background: rgb(var(--tw-glass-tint, 255 255 255) / 0.9);`);
+emit(`    -webkit-backdrop-filter: none;`);
+emit(`    backdrop-filter: none;`);
+emit(`  }`);
+emit(`  .glass::before {`);
+emit(`    display: none;`);
 emit(`  }`);
 emit(`}`);
 emit();
 emit(`@media (forced-colors: active) {`);
-emit(`  .glass-surface {`);
+emit(`  .glass {`);
 emit(`    background: Canvas;`);
 emit(`    border: 1px solid CanvasText;`);
 emit(`    box-shadow: none;`);
+emit(`    -webkit-backdrop-filter: none;`);
+emit(`    backdrop-filter: none;`);
+emit(`  }`);
+emit(`  .glass::before {`);
+emit(`    display: none;`);
 emit(`  }`);
 emit(`}`);
 emit();
 
-// Strength levels
-emit(`/* ── Displacement Strength ──────────────────────────────────── */`);
-emit(`/*`);
-emit(
-  ` * glass-strength-* and glass-chromatic-* both set --tw-glass-filter, so they`,
-);
-emit(
-  ` * are MUTUALLY EXCLUSIVE — applying both keeps only one (chromatic is emitted`,
-);
-emit(
-  ` * last, so it wins). Chromatic already includes displacement, so treat it as`,
-);
-emit(` * a richer alternative to strength, not an addition. Pick one.`);
-emit(` */`);
+// ── Tint ───────────────────────────────────────────────────────────
+emit(`/* ── Tint (surface color; RGB channels) ─────────────────────── */`);
+emit(`/* Override --tw-glass-tint directly for arbitrary colors, e.g.`);
+emit(`   style="--tw-glass-tint: 12 74 110". */`);
 emit();
-for (const { name, scale } of STRENGTHS) {
-  const uri = toDataUri(buildStandardFilter(mapUrlEncoded, scale));
-  emit(`@utility glass-strength-${name} {`);
-  emit(`  --tw-glass-filter: ${uri};`);
+for (const { name, channels } of TINTS) {
+  emit(`@utility glass-tint-${name} {`);
+  emit(`  --tw-glass-tint: ${channels};`);
   emit(`}`);
   emit();
 }
 
-// Chromatic levels
-emit(`/* ── Chromatic Aberration (RGB channel splitting) ──────────── */`);
-emit(
-  `/* Includes displacement — use INSTEAD of glass-strength-*, not with it. */`,
-);
+// ── Elevation ──────────────────────────────────────────────────────
+emit(`/* ── Elevation (layered depth) ──────────────────────────────── */`);
 emit();
-for (const { name, scale } of STRENGTHS) {
-  const uri = toDataUri(buildChromaticFilter(mapUrlEncoded, scale));
-  emit(`@utility glass-chromatic-${name} {`);
-  emit(`  --tw-glass-filter: ${uri};`);
+for (const { name, shadow } of ELEVATIONS) {
+  emit(`@utility glass-elevation-${name} {`);
+  emit(`  --tw-glass-elevation: ${shadow};`);
   emit(`}`);
   emit();
 }
 
-// ─── Continuous Modifiers ─────────────────────────────────────
-// Each accepts the bare numeric scale (e.g. glass-blur-4) and an arbitrary
-// value (e.g. glass-blur-[7px]); the arbitrary branch is taken as the raw CSS
-// value, the bare branch goes through the friendly scale.
-emit(`/* ── Continuous Modifiers ───────────────────────────────────── */`);
+// ── Frost modifiers ────────────────────────────────────────────────
+emit(`/* ── Frost & Sheen Modifiers ────────────────────────────────── */`);
+emit(`/* Each accepts a bare scale (glass-blur-8) or an arbitrary value`);
+emit(
+  `   (glass-blur-[7px]); the arbitrary branch is taken as the raw CSS value. */`,
+);
 emit();
 emit(`@utility glass-blur-* {`);
 emit(`  --tw-glass-blur: --value([length]);`);
@@ -307,33 +335,96 @@ emit(`  --tw-glass-brightness: --value([number]);`);
 emit(`  --tw-glass-brightness: calc(--value(number) / 100);`);
 emit(`}`);
 emit();
-emit(`@utility glass-bg-* {`);
-emit(`  --glass-bg-opacity: --value([number]);`);
-emit(`  --glass-bg-opacity: calc(--value(number) * 0.01);`);
+emit(`@utility glass-sheen-* {`);
+emit(`  --tw-glass-sheen: --value([number]);`);
+emit(`  --tw-glass-sheen: calc(--value(number) / 100);`);
 emit(`}`);
 emit();
-emit(`/* ── Glass Text Effect ─────────────────────────────────────── */`);
+emit(`@utility glass-bg-* {`);
+emit(`  --tw-glass-bg-opacity: --value([number]);`);
+emit(`  --tw-glass-bg-opacity: calc(--value(number) * 0.01);`);
+emit(`}`);
+emit();
+
+// ── Refraction (Chromium-only) ─────────────────────────────────────
+emit(`/* ── Refraction (Chromium-only) ─────────────────────────────── */`);
 emit(`/*`);
 emit(
-  ` * Shows a background image through the text shape, like looking through`,
+  ` * glass-refract-* and glass-aberration-* both define the single refraction`,
 );
 emit(
-  ` * glass letters. Set \`background-image\` on the element; the text is only`,
+  ` * filter (--tw-glass-refract), read only inside the Chromium gate above.`,
 );
+emit(` * Aberration is the chromatic flavor of refraction, so the two are`);
 emit(
-  ` * clipped (and made transparent) where background-clip:text is supported, so`,
+  ` * alternatives — pick one. They are inert in Safari/Firefox (which keep the`,
 );
-emit(` * unsupported browsers keep visible text in its normal color.`);
-emit(` *`);
+emit(` * baseline frost) by design.`);
+emit(` */`);
+emit();
+for (const { name, scale } of REFRACT_SCALES) {
+  emit(`@utility glass-refract-${name} {`);
+  emit(
+    `  --tw-glass-refract: ${toDataUri(buildStandardFilter(mapUrlEncoded, scale))};`,
+  );
+  emit(`}`);
+  emit();
+}
+for (const { name, scale } of REFRACT_SCALES) {
+  emit(`@utility glass-aberration-${name} {`);
+  emit(
+    `  --tw-glass-refract: ${toDataUri(buildChromaticFilter(mapUrlEncoded, scale))};`,
+  );
+  emit(`}`);
+  emit();
+}
+
+// ── Hero rim ───────────────────────────────────────────────────────
+emit(`/* ── Hero Rim (crisp lit ring via mask-composite) ───────────── */`);
 emit(
-  ` * background-attachment: fixed gives a parallax-window effect on desktop but`,
+  `/* Optional upgrade: a 1px gradient ring that follows the rounded corners,`,
 );
-emit(` * is unreliable on iOS Safari (rendered as scroll).`);
+emit(`   layered over the base rim for a sharper "lit edge". */`);
+emit(`@layer components {`);
+emit(`  .glass-rim-hero::after {`);
+emit(`    content: "";`);
+emit(`    position: absolute;`);
+emit(`    inset: 0;`);
+emit(`    z-index: -1;`);
+emit(`    border-radius: inherit;`);
+emit(`    padding: 1px;`);
+emit(`    pointer-events: none;`);
+emit(`    background: linear-gradient(`);
+emit(`      to bottom,`);
+emit(`      rgb(255 255 255 / 0.7),`);
+emit(`      rgb(255 255 255 / 0.05) 40%,`);
+emit(`      rgb(0 0 0 / 0.15)`);
+emit(`    );`);
+emit(`    -webkit-mask:`);
+emit(`      linear-gradient(#000 0 0) content-box,`);
+emit(`      linear-gradient(#000 0 0);`);
+emit(`    mask:`);
+emit(`      linear-gradient(#000 0 0) content-box,`);
+emit(`      linear-gradient(#000 0 0);`);
+emit(`    -webkit-mask-composite: xor;`);
+emit(`    mask-composite: exclude;`);
+emit(`  }`);
+emit(`}`);
+emit();
+
+// ── Glass text ─────────────────────────────────────────────────────
+emit(`/* ── Glass Text Effect ──────────────────────────────────────── */`);
+emit(`/*`);
+emit(
+  ` * Clips a background image to the text shape. Set background-image on the`,
+);
+emit(` * element; text is only made transparent where background-clip:text is`);
+emit(` * supported, so unsupported browsers keep visible text.`);
 emit(` *`);
 emit(` * Usage:`);
-emit(` *   <h1 class="glass-text" style="background-image: url(photo.jpg)">`);
-emit(` *     tw-glass`);
-emit(` *   </h1>`);
+emit(
+  ` *   <h1 class="glass-text" style="background-image: url(photo.jpg)">tw-glass</h1>`,
+);
 emit(` */`);
 emit();
 emit(`@utility glass-text {`);
@@ -356,6 +447,8 @@ const outPath = resolve(__dirname, "../src/index.css");
 writeFileSync(outPath, css);
 
 console.log(`✓ Generated ${outPath}`);
-console.log(`  ${STRENGTHS.length} standard strength levels`);
-console.log(`  ${STRENGTHS.length} chromatic strength levels`);
+console.log(
+  `  ${REFRACT_SCALES.length} refract + ${REFRACT_SCALES.length} aberration levels`,
+);
+console.log(`  ${TINTS.length} tints, ${ELEVATIONS.length} elevation tiers`);
 console.log(`  ${(css.length / 1024).toFixed(1)}KB total`);

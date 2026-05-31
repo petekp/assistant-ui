@@ -21,7 +21,7 @@ export function PatternPicker({
 }) {
   return (
     <div className="fixed inset-x-0 bottom-6 z-50 flex justify-center">
-      <div className="glass glass-surface flex gap-2 rounded-2xl p-2">
+      <div className="glass flex gap-2 rounded-2xl p-2">
         {PATTERNS.map((p, i) => (
           <button
             key={p.name}

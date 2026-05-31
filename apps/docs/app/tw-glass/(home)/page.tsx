@@ -53,7 +53,7 @@ export default function TwGlassPage() {
 
         {/* Hero */}
         <div className="mx-auto flex w-fit flex-col items-center space-y-6 text-center">
-          <div className="glass glass-surface glass-bg-3 glass-chromatic-50 glass-blur-0 glass-saturation-200 glass-brightness-150 flex items-center gap-2 rounded-full px-4 py-1.5 text-sm">
+          <div className="glass glass-bg-3 glass-aberration-50 glass-blur-0 glass-saturation-200 glass-brightness-150 flex items-center gap-2 rounded-full px-4 py-1.5 text-sm">
             <Sparkle className="size-4 opacity-50" />
             <span className="text-foreground/60">Tailwind CSS v4 Plugin</span>
           </div>
@@ -134,19 +134,19 @@ export default function TwGlassPage() {
 
             <Box>
               <BoxTitle
-                title="glass glass-surface"
-                description="Add frosted surface styling (semi-transparent background + inner glow + shadow)."
+                title="glass"
+                description="Frosted surface styling (semi-transparent background + inner glow + shadow) is built into the base class."
               />
               <BoxCode>
                 <CodeBlock
                   language="html"
-                  code='<div class="glass glass-surface rounded-xl p-6">Frosted panel</div>'
-                  highlight="glass-surface"
+                  code='<div class="glass rounded-xl p-6">Frosted panel</div>'
+                  highlight="glass"
                   highlightMode="text"
                 />
               </BoxCode>
               <DemoArea pattern={bg}>
-                <GlassDemo className="glass glass-surface" />
+                <GlassDemo className="glass" />
               </DemoArea>
             </Box>
           </div>
@@ -164,22 +164,22 @@ export default function TwGlassPage() {
           <div className="mx-auto max-w-3xl space-y-6">
             <Box>
               <BoxTitle
-                title="glass-strength-{value}"
+                title="glass-refract-{value}"
                 description="Displacement intensity. Available: 5, 10, 20 (default), 30, 40, 50. Higher values create more dramatic refraction."
               />
               <BoxCode>
                 <CodeBlock
                   language="html"
-                  code='<div class="glass glass-strength-40 rounded-xl p-6">Strong glass</div>'
-                  highlight="glass-strength"
+                  code='<div class="glass glass-refract-40 rounded-xl p-6">Strong glass</div>'
+                  highlight="glass-refract"
                   highlightMode="text"
                 />
               </BoxCode>
               <DemoArea pattern={bg}>
                 <div className="grid grid-cols-3">
-                  <GlassDemo className="glass glass-strength-5" label="5" />
-                  <GlassDemo className="glass glass-strength-20" label="20" />
-                  <GlassDemo className="glass glass-strength-50" label="50" />
+                  <GlassDemo className="glass glass-refract-5" label="5" />
+                  <GlassDemo className="glass glass-refract-20" label="20" />
+                  <GlassDemo className="glass glass-refract-50" label="50" />
                 </div>
               </DemoArea>
             </Box>
@@ -199,22 +199,22 @@ export default function TwGlassPage() {
           <div className="mx-auto max-w-3xl space-y-6">
             <Box>
               <BoxTitle
-                title="glass-chromatic-{value}"
+                title="glass-aberration-{value}"
                 description="Replaces standard displacement with per-channel RGB splitting. Same strength levels: 5, 10, 20, 30, 40, 50."
               />
               <BoxCode>
                 <CodeBlock
                   language="html"
-                  code='<div class="glass glass-chromatic-20 rounded-xl p-6">Chromatic glass</div>'
-                  highlight="glass-chromatic"
+                  code='<div class="glass glass-aberration-20 rounded-xl p-6">Chromatic glass</div>'
+                  highlight="glass-aberration"
                   highlightMode="text"
                 />
               </BoxCode>
               <DemoArea pattern={bg}>
                 <div className="grid grid-cols-3">
-                  <GlassDemo className="glass glass-chromatic-10" label="10" />
-                  <GlassDemo className="glass glass-chromatic-20" label="20" />
-                  <GlassDemo className="glass glass-chromatic-40" label="40" />
+                  <GlassDemo className="glass glass-aberration-10" label="10" />
+                  <GlassDemo className="glass glass-aberration-20" label="20" />
+                  <GlassDemo className="glass glass-aberration-40" label="40" />
                 </div>
               </DemoArea>
             </Box>
@@ -325,20 +325,19 @@ export default function TwGlassPage() {
               <BoxCode>
                 <CodeBlock
                   language="html"
-                  code={`<div class="glass glass-strength-30 glass-blur-4 glass-saturation-150 glass-surface rounded-xl p-6">
+                  code={`<div class="glass glass-refract-30 glass-blur-4 glass-saturation-150 rounded-xl p-6">
   Composed glass panel
 </div>`}
                   highlight={[
-                    "glass-strength",
+                    "glass-refract",
                     "glass-blur",
                     "glass-saturation",
-                    "glass-surface",
                   ]}
                   highlightMode="text"
                 />
               </BoxCode>
               <DemoArea pattern={bg}>
-                <GlassDemo className="glass glass-strength-30 glass-blur-4 glass-saturation-150 glass-surface" />
+                <GlassDemo className="glass glass-refract-30 glass-blur-4 glass-saturation-150" />
               </DemoArea>
             </Box>
           </div>

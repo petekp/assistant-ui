@@ -109,7 +109,7 @@ function MassGridSection() {
     >
       <TestCard
         title={`${count} glass elements`}
-        description="Each cell is a glass glass-surface div over a shared photo background."
+        description="Each cell is a glass div over a shared photo background."
       >
         <div className="mb-4 flex items-center gap-4">
           <label
@@ -138,10 +138,7 @@ function MassGridSection() {
             }}
           >
             {Array.from({ length: count }).map((_, i) => (
-              <div
-                key={i}
-                className="glass glass-surface aspect-square rounded-lg"
-              />
+              <div key={i} className="glass aspect-square rounded-lg" />
             ))}
           </div>
         </DemoArea>
@@ -151,21 +148,21 @@ function MassGridSection() {
 }
 
 const STRENGTH_VARIANTS = [
-  { label: "strength-5", cls: "glass glass-strength-5" },
-  { label: "strength-10", cls: "glass glass-strength-10" },
-  { label: "strength-20", cls: "glass glass-strength-20" },
-  { label: "strength-30", cls: "glass glass-strength-30" },
-  { label: "strength-40", cls: "glass glass-strength-40" },
-  { label: "strength-50", cls: "glass glass-strength-50" },
+  { label: "refract-5", cls: "glass glass-refract-5" },
+  { label: "refract-10", cls: "glass glass-refract-10" },
+  { label: "refract-20", cls: "glass glass-refract-20" },
+  { label: "refract-30", cls: "glass glass-refract-30" },
+  { label: "refract-40", cls: "glass glass-refract-40" },
+  { label: "refract-50", cls: "glass glass-refract-50" },
 ];
 
 const CHROMATIC_VARIANTS = [
-  { label: "chromatic-5", cls: "glass glass-chromatic-5" },
-  { label: "chromatic-10", cls: "glass glass-chromatic-10" },
-  { label: "chromatic-20", cls: "glass glass-chromatic-20" },
-  { label: "chromatic-30", cls: "glass glass-chromatic-30" },
-  { label: "chromatic-40", cls: "glass glass-chromatic-40" },
-  { label: "chromatic-50", cls: "glass glass-chromatic-50" },
+  { label: "aberration-5", cls: "glass glass-aberration-5" },
+  { label: "aberration-10", cls: "glass glass-aberration-10" },
+  { label: "aberration-20", cls: "glass glass-aberration-20" },
+  { label: "aberration-30", cls: "glass glass-aberration-30" },
+  { label: "aberration-40", cls: "glass glass-aberration-40" },
+  { label: "aberration-50", cls: "glass glass-aberration-50" },
 ];
 
 function AllVariantsSection() {
@@ -240,7 +237,7 @@ function NestedGlassSection() {
 function NestLevel({ current, max }: { current: number; max: number }) {
   if (current > max) return null;
   return (
-    <div className="glass glass-surface rounded-xl p-4">
+    <div className="glass rounded-xl p-4">
       <code className="bg-foreground/10 text-muted-foreground mb-2 block w-fit rounded px-1.5 py-0.5 font-mono text-[10px]">
         Level {current}
       </code>
@@ -264,7 +261,7 @@ function ScrollStressSection() {
     >
       <TestCard
         title="Scroll through glass panels"
-        description="Each panel uses glass glass-surface over a fixed background."
+        description="Each panel uses glass over a fixed background."
       >
         <div
           className="relative h-[500px] overflow-y-auto rounded-lg"
@@ -272,7 +269,7 @@ function ScrollStressSection() {
         >
           <div className="space-y-3 p-4">
             {Array.from({ length: 60 }).map((_, i) => (
-              <div key={i} className="glass glass-surface rounded-xl px-4 py-3">
+              <div key={i} className="glass rounded-xl px-4 py-3">
                 <code className="text-muted-foreground font-mono text-[10px]">
                   Panel {i + 1}
                 </code>
@@ -298,7 +295,7 @@ function ResizeBehaviorSection() {
       >
         <DemoArea>
           <div
-            className="glass glass-surface glass-strength-30 resize overflow-auto rounded-xl p-6"
+            className="glass glass-refract-30 resize overflow-auto rounded-xl p-6"
             style={{ width: 300, height: 200, minWidth: 100, minHeight: 80 }}
           >
             <code className="bg-foreground/10 text-muted-foreground rounded px-1.5 py-0.5 font-mono text-[10px]">
@@ -354,18 +351,18 @@ function ComposabilitySection() {
     >
       <TestCard
         title="Full composition"
-        description="strength-50 + chromatic + blur-6 + saturation-200 + brightness-130 + surface"
+        description="refract-50 + aberration + blur-6 + saturation-200 + brightness-130"
       >
         <DemoArea>
           <GlassPanel
-            className="glass glass-strength-50 glass-blur-6 glass-saturation-200 glass-brightness-130 glass-surface"
-            label="glass glass-strength-50 glass-blur-6 glass-saturation-200 glass-brightness-130 glass-surface"
+            className="glass glass-refract-50 glass-blur-6 glass-saturation-200 glass-brightness-130"
+            label="glass glass-refract-50 glass-blur-6 glass-saturation-200 glass-brightness-130"
           />
         </DemoArea>
         <DemoArea>
           <GlassPanel
-            className="glass glass-chromatic-50 glass-blur-6 glass-saturation-200 glass-brightness-130 glass-surface"
-            label="glass glass-chromatic-50 glass-blur-6 glass-saturation-200 glass-brightness-130 glass-surface"
+            className="glass glass-aberration-50 glass-blur-6 glass-saturation-200 glass-brightness-130"
+            label="glass glass-aberration-50 glass-blur-6 glass-saturation-200 glass-brightness-130"
           />
         </DemoArea>
       </TestCard>
@@ -386,9 +383,9 @@ function InteractiveSection() {
   const cols = Math.ceil(Math.sqrt(count));
 
   const strengthClass = chromatic
-    ? `glass-chromatic-${strength}`
-    : `glass-strength-${strength}`;
-  const fullClass = `glass ${strengthClass} glass-blur-${blur} glass-saturation-${saturation} glass-brightness-${brightness} glass-surface`;
+    ? `glass-aberration-${strength}`
+    : `glass-refract-${strength}`;
+  const fullClass = `glass ${strengthClass} glass-blur-${blur} glass-saturation-${saturation} glass-brightness-${brightness}`;
 
   // Snap strength to valid discrete values
   const snapStrength = useCallback((val: number) => {

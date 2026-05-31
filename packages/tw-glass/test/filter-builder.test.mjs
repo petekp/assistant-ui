@@ -1,14 +1,16 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  GLASS_BACKDROP_FILTER,
-  GLASS_FROST_FILTER,
+  GLASS_FROST,
+  glassRefractBackdrop,
   buildDisplacementMapSvg,
+  buildGrainSvg,
   minifySvg,
   encodeSvgUrl,
   buildStandardFilter,
   buildChromaticFilter,
   toDataUri,
+  toBackgroundUri,
 } from "../scripts/filter-builder.mjs";
 
 const map = encodeSvgUrl(buildDisplacementMapSvg());
@@ -35,6 +37,13 @@ test('toDataUri wraps as url("data:image/svg+xml,...#f")', () => {
   const uri = toDataUri('<svg><filter id="f"/></svg>');
   assert.ok(uri.startsWith('url("data:image/svg+xml,'));
   assert.ok(uri.endsWith('#f")'));
+});
+
+test('toBackgroundUri wraps as url("data:...") with no #f fragment', () => {
+  const uri = toBackgroundUri("<svg><rect/></svg>");
+  assert.ok(uri.startsWith('url("data:image/svg+xml,'));
+  assert.ok(uri.endsWith('")'));
+  assert.ok(!uri.endsWith('#f")'));
 });
 
 test("toDataUri output contains no raw <, > or double-quote", () => {
@@ -85,33 +94,27 @@ test("buildDisplacementMapSvg supports a circle neutral shape", () => {
   assert.ok(buildDisplacementMapSvg({ shape: "circle" }).includes("<circle"));
 });
 
-test("GLASS_BACKDROP_FILTER composes from tw-glass vars, not Tailwind internals", () => {
-  assert.ok(GLASS_BACKDROP_FILTER.includes("var(--tw-glass-filter)"));
-  assert.ok(GLASS_BACKDROP_FILTER.includes("blur(var(--tw-glass-blur))"));
-  assert.ok(
-    GLASS_BACKDROP_FILTER.includes("brightness(var(--tw-glass-brightness))"),
-  );
-  assert.ok(
-    GLASS_BACKDROP_FILTER.includes("saturate(var(--tw-glass-saturation))"),
-  );
-  assert.ok(!GLASS_BACKDROP_FILTER.includes("--tw-backdrop-"));
+test("buildGrainSvg bakes grayscale fractal noise at a fixed tile + opacity", () => {
+  const svg = buildGrainSvg();
+  assert.ok(svg.includes('type="fractalNoise"'));
+  assert.ok(svg.includes('type="saturate" values="0"'), "grayscale grain");
+  assert.ok(svg.includes('width="120" height="120"'), "default tile size");
+  assert.ok(svg.includes('opacity="0.18"'), "default baked intensity");
 });
 
-test("GLASS_FROST_FILTER is frost-only — no displacement url, universally supported", () => {
-  assert.ok(GLASS_FROST_FILTER.includes("blur(var(--tw-glass-blur))"));
-  assert.ok(
-    GLASS_FROST_FILTER.includes("brightness(var(--tw-glass-brightness))"),
-  );
-  assert.ok(
-    GLASS_FROST_FILTER.includes("saturate(var(--tw-glass-saturation))"),
-  );
-  // The point of glass-frosted: no SVG filter reference, so it renders everywhere.
-  assert.ok(!GLASS_FROST_FILTER.includes("--tw-glass-filter"));
-  assert.ok(!GLASS_FROST_FILTER.includes("url("));
-  assert.ok(!GLASS_FROST_FILTER.includes("--tw-backdrop-"));
+test("GLASS_FROST is frost-only — no displacement url, universally supported", () => {
+  assert.ok(GLASS_FROST.includes("blur(var(--tw-glass-blur))"));
+  assert.ok(GLASS_FROST.includes("saturate(var(--tw-glass-saturation))"));
+  assert.ok(GLASS_FROST.includes("brightness(var(--tw-glass-brightness))"));
+  // The baseline must render everywhere: no SVG filter reference.
+  assert.ok(!GLASS_FROST.includes("url("));
+  assert.ok(!GLASS_FROST.includes("--tw-glass-refract"));
+  assert.ok(!GLASS_FROST.includes("--tw-backdrop-"));
 });
 
-test("GLASS_BACKDROP_FILTER is the displacement followed by the frost terms", () => {
-  assert.ok(GLASS_BACKDROP_FILTER.startsWith("var(--tw-glass-filter) "));
-  assert.ok(GLASS_BACKDROP_FILTER.endsWith(GLASS_FROST_FILTER));
+test("glassRefractBackdrop prepends the refraction var (with default) to the frost", () => {
+  const def = toDataUri(buildStandardFilter(map, 0.1));
+  const value = glassRefractBackdrop(def);
+  assert.ok(value.startsWith(`var(--tw-glass-refract, ${def})`));
+  assert.ok(value.endsWith(GLASS_FROST));
 });

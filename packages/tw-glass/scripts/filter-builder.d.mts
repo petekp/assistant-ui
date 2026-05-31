@@ -1,6 +1,6 @@
-export const GLASS_FROST_FILTER: string;
+export const GLASS_FROST: string;
 
-export const GLASS_BACKDROP_FILTER: string;
+export function glassRefractBackdrop(defaultRefractUri: string): string;
 
 export function buildDisplacementMapSvg(opts?: {
   inset?: number;
@@ -8,6 +8,13 @@ export function buildDisplacementMapSvg(opts?: {
   innerBlur?: number;
   outerBlur?: number;
   shape?: "rect" | "circle";
+}): string;
+
+export function buildGrainSvg(opts?: {
+  size?: number;
+  baseFrequency?: number;
+  numOctaves?: number;
+  opacity?: number;
 }): string;
 
 export function minifySvg(svg: string): string;
@@ -27,3 +34,5 @@ export function buildChromaticFilter(
 ): string;
 
 export function toDataUri(svg: string): string;
+
+export function toBackgroundUri(svg: string): string;
