@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "record_id": "continuity-a8f935d5-45b0-49c8-af73-3400a7deeeb9",
+  "project_root": "/Users/petepetrash/Code/aui/assistant-ui/.claude/worktrees/tw-glass-updates",
+  "created_at": "2026-05-31T01:00:44.451Z",
+  "git": {
+    "cwd": "/Users/petepetrash/Code/aui/assistant-ui/.claude/worktrees/tw-glass-updates"
+  },
+  "narrative": {
+    "goal": "Redesign tw-glass into a remarkably simple, cross-browser, zero-JS, native-like glass API (web-only: Chrome/Safari/Firefox).",
+    "next": "Get maintainer sign-off on packages/tw-glass/REDESIGN.md, then implement the one auto-routing `glass` base + orthogonal modifiers; run the open perf pass (Q6, scripted scroll incl. iOS Safari) and grain-consistency check (Q5).",
+    "state_markdown": "- Research + empirical prototyping COMPLETE; decision-ready proposal at packages/tw-glass/REDESIGN.md (untracked). Raw log + prototype pages/captures in /tmp/glass-proto (FINDINGS.md, capture.sh, *.html, *-{chromium,safari,firefox}.png).\n- PROVEN in Chromium + real Safari 18.6 + Firefox: ONE zero-JS `glass` class can auto-route — premium pure-CSS approximation baseline (frost-on-host + specular sheen + asymmetric inset rim + layered depth + baked grain) everywhere, true SVG refraction added only in Chromium via fail-safe gate `@supports (not (-webkit-hyphens:none)) and (not (-moz-appearance:none))` (TRUE Chromium / FALSE Safari+FF, verified both CSS.supports and real @supports).\n- Render proof: proposed gated `.glass` is premium in Safari/FF and NEVER blank; the current refraction-only `.glass` is BLANK in Safari/FF (the regression being fixed). Premium-max recipe shows Safari can look genuinely glass-like, so refraction is a Chromium bonus not a requirement.\n- Architecture results: frost MUST be on host (z-index:-1 ::before frost samples page in Safari but NOT Chromium = rejected); blur(var(--x)) works in Safari; mask-composite rim follows rounded corners (optional hero rim).\n- Proposed API: ONE `glass` base + orthogonal modifiers each owning one custom property (tint/blur/saturation/brightness/bg/sheen/elevation/refract/aberration/rim-hero); refraction url() leaves the shared --tw-glass-filter slot; aberration becomes a sub-property of refraction = resolves REVIEW.md HIGH shared-slot flaw.\n- Memories saved: tw-glass-redesign, chromium-css-supports-gate, cross-browser-screenshot-harness. python3 http.server :8765 still serving /tmp/glass-proto.",
+    "debt_markdown": "- NOT YET IMPLEMENTED — this session produced research + a proposal only (chosen scope was research+recommendation). Needs maintainer sign-off before building.\n- Open empirical gaps before shipping: perf pass under scripted scroll incl. iOS Safari (Q6) + documented per-page surface budget + blur-radius ceiling; grain pixel-consistency across engines (Q5); adaptive contrast (light-dark tint) for legibility; refraction corner-radius mismatch (map rx=4 vs ~16px cards, REVIEW MEDIUM).\n- Gate longevity: document tested versions (Chromium, Safari 18.6, Firefox); re-validate on major releases; failure mode is graceful (Chromium loses refraction), never blank. Track WebKit #245510 — if SVG-in-backdrop-filter is fixed, gate can be removed.\n- Branch tw-glass-updates still generically named + unpushed (commits c8d04d084, 96dd3d274). REDESIGN.md / REVIEW.md / REVIEW-findings.json / .circuit/ / /tmp/glass-proto left untracked or ephemeral. Firefox test tabs + :8765 server left open."
+  },
+  "continuity_kind": "standalone",
+  "resume_contract": {
+    "mode": "resume_standalone",
+    "auto_resume": false,
+    "requires_explicit_resume": true
+  }
+}

@@ -3910,7 +3910,7 @@ importers:
   packages/tw-glass:
     dependencies:
       tailwindcss:
-        specifier: '>=4.0.0-0'
+        specifier: '>=4.0.0 <5'
         version: 4.3.0
 
   packages/tw-shimmer:

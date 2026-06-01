@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "action": "resume",
+  "status": "resumed",
+  "source": "pending_record",
+  "record_id": "continuity-43dac4d9-b06e-447a-8e03-591053ac5906",
+  "continuity_path": "/Users/petepetrash/Code/aui/assistant-ui/.claude/worktrees/tw-glass-updates/.circuit/continuity/records/continuity-43dac4d9-b06e-447a-8e03-591053ac5906.json",
+  "index_path": "/Users/petepetrash/Code/aui/assistant-ui/.claude/worktrees/tw-glass-updates/.circuit/continuity/index.json",
+  "operator_summary_markdown_path": "/Users/petepetrash/Code/aui/assistant-ui/.claude/worktrees/tw-glass-updates/.circuit/continuity/reports/operator-summary.md"
+}

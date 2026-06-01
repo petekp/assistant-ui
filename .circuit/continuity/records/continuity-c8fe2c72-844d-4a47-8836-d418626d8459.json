@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "record_id": "continuity-c8fe2c72-844d-4a47-8836-d418626d8459",
+  "project_root": "/Users/petepetrash/Code/aui/assistant-ui/.claude/worktrees/tw-glass-updates",
+  "created_at": "2026-05-30T19:01:30.981Z",
+  "git": {
+    "cwd": "/Users/petepetrash/Code/aui/assistant-ui/.claude/worktrees/tw-glass-updates"
+  },
+  "narrative": {
+    "goal": "Address all deferred tw-glass items (review follow-ups not yet implemented)",
+    "next": "Update the docs tuner Copy-CSS output to emit the new namespaced backdrop-filter composition (GLASS_BACKDROP_FILTER from tw-glass/filter-builder) instead of the old --tw-backdrop-* chain, then complete deferred demo-page polish (task #11)",
+    "state_markdown": "- Worktree: .claude/worktrees/tw-glass-updates on branch tw-glass-updates (off origin/main 4dfc5da01).\n- DONE (verified): package source rewritten (filter-builder.mjs shared minifySvg + exported GLASS_BACKDROP_FILTER, generate.mjs composes from tw-glass own vars not Tailwind --tw-backdrop-* internals, .d.mts synced, index.css regenerated+oxfmt idempotent). package.json: ./filter-builder + ./package.json exports, files+LICENSE, peer tailwindcss \">=4.0.0 <5\", scripts generate/generate:check/test. Added LICENSE, README rewrite (browser support, gotchas, strength-vs-chromatic, --tw-glass-tint), changeset, 12/12 node:test. Docs: tuner import now tw-glass/filter-builder; hero mousemove gated on prefers-reduced-motion.\n- Verified green: tests 12/12 exit0, oxlint clean, pnpm-lock.yaml + root package.json clean, generate+format stable.\n- Untracked: packages/tw-glass/{LICENSE,test/,REVIEW.md,REVIEW-findings.json}, .changeset/tw-glass-hardening.md. Nothing committed yet.",
+    "debt_markdown": "- Tuner Copy-CSS output (apps/docs/app/tw-glass/tuner/page.tsx ~lines 145-185) still emits the OLD --tw-backdrop-* 9-var composition; update it to the new GLASS_BACKDROP_FILTER namespaced approach so copy-paste matches shipped CSS.\n- Task #11 deferred demo polish (demo-only, no package impact): (1) tuner Slider needs role/aria-valuenow/min/max/aria-label + BlendSelect radiogroup roles; (2) glass-text demos (stress-test-text/page.tsx, (home)/glass-text-hero.tsx) need fallback color + contrast floor; (3) consolidate 3 divergent unsplash() helpers (pattern-picker q=90 vs stress-test q=80) + shared stress-test scaffolding; (4) tuner bubbles use array index keys -> stable keys. These were deferred because the env was corrupting reads on the 600-800 line interactive files; read carefully/in small ranges next time.\n- Decide whether to commit REVIEW.md / REVIEW-findings.json or remove them (untracked reference artifacts).\n- Two critic findings had inaccurate specifics (corner-radius rx=4 vs 1rem; addressed via docs) — do not chase the literal claims.\n- Consider renaming branch off generic tw-glass-updates before PR."
+  },
+  "continuity_kind": "standalone",
+  "resume_contract": {
+    "mode": "resume_standalone",
+    "auto_resume": false,
+    "requires_explicit_resume": true
+  }
+}
