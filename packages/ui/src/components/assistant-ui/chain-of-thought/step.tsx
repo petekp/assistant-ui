@@ -185,24 +185,27 @@ export function ChainOfThoughtStep({
           "transition-colors duration-200",
           "fade-in-0 slide-in-from-top-[8px] animate-in fill-mode-both delay-[var(--step-delay)] duration-[var(--animation-duration,200ms)] ease-[var(--spring-easing,cubic-bezier(0.22,0.61,0.36,1))]",
           STEP_EXIT_ANIM,
-          isActive && "text-foreground",
+          isActive && !active && "text-foreground",
           isError && "text-destructive",
           "motion-reduce:animate-none",
         )}
       >
-        {children}
-        {active && (
-          <span
-            aria-hidden
-            data-slot="chain-of-thought-step-shimmer"
-            className={cn(
-              // `shimmer-bg` makes the sheen paint over the box; plain `.shimmer`
-              // clips to text and would render nothing on this empty overlay.
-              "aui-chain-of-thought-step-shimmer shimmer shimmer-bg pointer-events-none absolute inset-0 rounded-md",
-              "motion-reduce:animate-none",
-            )}
-          />
-        )}
+        {/*
+          `shimmer` clips the sweep to the glyphs via `background-clip: text`,
+          but it needs its own element: the content div already runs an
+          `animate-in` entrance animation, and one element can run only one
+          `animation-name`, so co-locating them freezes the shimmer. The wrapper
+          is always rendered (only its classes toggle) so streaming content keeps
+          a stable DOM node and focus restoration on auto-collapse still works.
+        */}
+        <div
+          className={cn(
+            active &&
+              "aui-chain-of-thought-step-shimmer shimmer text-foreground/40 motion-reduce:animate-none",
+          )}
+        >
+          {children}
+        </div>
       </div>
     </li>
   );
